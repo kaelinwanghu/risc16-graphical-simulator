@@ -16,11 +16,14 @@ public class Processor {
 	private DataCache[] dataCache;
 	private InstructionCache instructionCache;
 	private UnitSet unitSet;
+	private int instructionLimit;
+	private int instructionsExecuted;
 	
 	public Processor(int[][] cacheConfig, int[][] unitsConfig) {
 		configureStorage(cacheConfig);
 		unitSet = new UnitSet(unitsConfig);
 		registerFile = new RegisterFile(0);
+		instructionsExecuted = 0;
 	}
 	
 	public void configureStorage(int[][] config) {
@@ -44,6 +47,9 @@ public class Processor {
 		Instruction instruction;
 		int oldPc;
 		do {
+			if (instructionsExecuted > instructionLimit) {
+				throw new IllegalArgumentException("Instruction limit of " + instructionLimit + " reached");
+			}
 			oldPc = registerFile.getPc();
 			instruction = instructionCache.getInstruction(oldPc).clone();
 	
@@ -67,6 +73,7 @@ public class Processor {
 				instruction.setExecutionTime((Integer)data[3]);
 			
 			unitSet.addExecutedInstruction(instruction);
+			instructionsExecuted++;
 			
 			if (registerFile.getPc() > memory.getLastInstructionAddress())
 				return true;
@@ -106,12 +113,29 @@ public class Processor {
 	public UnitSet getUnitSet() {
 		return unitSet;
 	}
+
+	public void setInstructionLimit(int limit) {
+		if (limit < 1)
+		{
+			throw new IllegalArgumentException("Instruction limit must be at least 1");
+		}
+		this.instructionLimit = limit;
+	}
+	
+	public int getInstructionLimit() {
+		return instructionLimit;
+	}
+	
+	public int getInstructionsExecuted() {
+		return instructionsExecuted;
+	}
 	
 	public void clear() {
 		registerFile.clear(0);
 		unitSet.clear();
 		memory.clear();
 		instructionCache.clear();
+		instructionsExecuted = 0;
 		for (DataCache cache : dataCache)
 			cache.clear();
 	}

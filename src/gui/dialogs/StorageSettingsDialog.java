@@ -1,40 +1,32 @@
 package gui.dialogs;
 
 import gui.Simulator;
-import gui.components.CacheSettings;
+import gui.components.InputBox;
 import gui.components.MemorySettings;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.border.TitledBorder;
 
 @SuppressWarnings("serial")
 public class StorageSettingsDialog extends JDialog {
 	
 	private Simulator simulator;
-	private JComboBox<String> levels;
 	private MemorySettings memorySettings;
-	private CacheSettings l1Instruction;
-	private CacheSettings l1Data;
-	private CacheSettings l2Data;
-	private CacheSettings l3Data;
-	private int selectedLevel;
+	private InputBox instructionLimit;
 	
 	public StorageSettingsDialog(Simulator simulator) {
 		super(simulator, "Storage Settings", true);
@@ -44,94 +36,61 @@ public class StorageSettingsDialog extends JDialog {
 		setIconImage(simulator.getIconImage());
 		
 		memorySettings = new MemorySettings();
-		l1Instruction = new CacheSettings("L1 Instruction Cache", false);
-		l1Data = new CacheSettings("L1 Data Cache", true);
-		l2Data = new CacheSettings("L2 Data Cache", true);
-		l2Data.setEnabled(false);
-		l3Data = new CacheSettings("L3 Data Cache", true);
-		l3Data.setEnabled(false);
-		
 		memorySettings.setConfiguration(new int[]{1, 1, 0, 32, 100});
-		l1Instruction.setConfiguration(new int[]{2, 0, 8, 8, 5});
-		l1Data.setConfiguration(new int[]{4, 0, 16, 1, 5, 0, 0});
 		
-		levels = new JComboBox<String>(new String[]{"1 Level", "2 Levels", "3 Levels"});
-		levels.addItemListener(new ItemListener() {
-			
-			public void itemStateChanged(ItemEvent arg0) {
-				l2Data.setEnabled(levels.getSelectedIndex() > 0);
-				l3Data.setEnabled(levels.getSelectedIndex() > 1);
-			}
-			
-		});
-		levels.setFocusable(false);
+		instructionLimit = new InputBox("Instruction Limit", 140, 10, "");
+		instructionLimit.setInput(65535); // 2^16 - 1 as default
 		
-		JLabel label1 = new JLabel("Data Cache");
-		label1.setFont(new Font("Consolas", Font.PLAIN, 19));
-		label1.setForeground(Color.RED);
+		JLabel execLabel = new JLabel("Execution Settings");
+		execLabel.setFont(new Font("Consolas", Font.PLAIN, 19));
+		execLabel.setForeground(Color.RED);
 		
-		JPanel p1 = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-		p1.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createTitledBorder(""), BorderFactory.createEmptyBorder(7, 0, 7, 0)));
-		p1.add(label1);
-		p1.add(levels);
+		JPanel executionPanel = new JPanel(new GridLayout(2, 1, 0, 5));
+		executionPanel.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createTitledBorder(null, "", TitledBorder.LEFT, TitledBorder.TOP), 
+			BorderFactory.createEmptyBorder(5, 0, 5, 0)
+		));
+		executionPanel.add(execLabel);
+		executionPanel.add(instructionLimit);
 		
-		JPanel p = new JPanel(new GridBagLayout());
-		p.add(p1);
-
-		JPanel p2 = new JPanel(new GridLayout(1, 3, 10, 0));
-		p2.add(memorySettings);
-		p2.add(p);
-		p2.add(l1Instruction);
-		
-		JPanel p3 = new JPanel(new GridLayout(1, 3, 10, 0));
-		p3.add(l1Data);
-		p3.add(l2Data);
-		p3.add(l3Data);
+		JPanel mainPanel = new JPanel(new GridLayout(1, 2, 20, 0));
+		mainPanel.add(memorySettings);
+		mainPanel.add(executionPanel);
+		mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 		
 		JButton exit = new JButton("Exit");
 		exit.setFocusable(false);
 		exit.addActionListener(new ActionListener(){
-
 			public void actionPerformed(ActionEvent e) {
 				exit();
 			}
-			
 		});
 		
 		addWindowListener(new WindowAdapter() {
-			
 			public void windowClosing(WindowEvent e) {
 				exit();
 			}
-			
 		});
 		
 		JButton apply = new JButton("Apply");
 		apply.setFocusable(false);
 		apply.addActionListener(new ActionListener(){
-
 			public void actionPerformed(ActionEvent e) {
 				apply();
 			}
-			
 		});
 		
-		JPanel p4 = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
-		p4.add(apply);
-		p4.add(exit);
-		p4.setBorder(BorderFactory.createEmptyBorder(7, 0, 5, 0));
+		JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
+		buttonPanel.add(apply);
+		buttonPanel.add(exit);
+		buttonPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
 		
-		JPanel p5 = new JPanel(new BorderLayout(0, 5));
-		p5.add(p2);
-		p5.add(p3, BorderLayout.SOUTH);
-		p5.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 5));
+		// Assemble dialog
+		JPanel contentPanel = new JPanel(new BorderLayout(0, 10));
+		contentPanel.add(mainPanel, BorderLayout.CENTER);
+		contentPanel.add(buttonPanel, BorderLayout.SOUTH);
 		
-		JPanel p6 = new JPanel(new BorderLayout(0, 0));
-		p6.add(p5);
-		p6.add(p4, BorderLayout.SOUTH);
-		p6.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-		
-		add(p6);
+		add(contentPanel);
 		
 		setResizable(false);
 		pack();
@@ -139,19 +98,23 @@ public class StorageSettingsDialog extends JDialog {
 	}
 	
 	private void apply() {
-		int[][] config = new int[3 + levels.getSelectedIndex()][];
+		// Hardcode cache
+		int[][] config = new int[5][];
 		try {
 			config[0] = memorySettings.getConfiguration();
-			config[1] = l1Instruction.getConfiguration();
-			config[2] = l1Data.getConfiguration();
-			if (levels.getSelectedIndex() > 0) 
-				config[3] = l2Data.getConfiguration();
-			if (levels.getSelectedIndex() > 1) 
-				config[4] = l3Data.getConfiguration();
+			// Hardcoded L1 Instruction Cache: 2B line, 8 lines, 8-way, 5 cycles
+			config[1] = new int[]{2, 0, 8, 8, 5};
+			// Hardcoded L1 Data Cache: 4B line, 16 lines, direct-mapped, 5 cycles, write-back, write-allocate
+			config[2] = new int[]{4, 0, 16, 1, 5, 0, 0};
+			// Hardcoded L2 Data Cache: 8B line, 32 lines, 2-way, 10 cycles, write-back, write-allocate
+			config[3] = new int[]{8, 0, 32, 2, 10, 0, 0};
+			// Hardcoded L3 Data Cache: 16B line, 64 lines, 4-way, 20 cycles, write-back, write-allocate
+			config[4] = new int[]{16, 0, 64, 4, 20, 0, 0};
 		} catch (Exception ex) {
 			simulator.errorDialog.showError("Invalid/Missing input");
 			return;
 		}
+		
 		int[][] newConfig = new int[config.length][6];
 		for (int i = 0; i < newConfig.length; i++) {
 			newConfig[i][0] = config[i][0] * (int)Math.pow(1024, config[i][1]);
@@ -163,36 +126,32 @@ public class StorageSettingsDialog extends JDialog {
 				newConfig[i][5] = config[i][6] + 2;
 			}
 		}
+		
 		try {
 			Simulator.processor.configureStorage(newConfig);
+			
+			// Apply instruction limit (Note: Currently bad)
+			int limit = instructionLimit.getValue();
+			if (limit < 1) {
+				simulator.errorDialog.showError("Instruction limit must be at least 1");
+				return;
+			}
+			Simulator.processor.setInstructionLimit(limit);
+			
 			Simulator.processor.clear();
 			memorySettings.setConfiguration(config[0]);
-			l1Instruction.setConfiguration(config[1]);
-			l1Data.setConfiguration(config[2]);
-			if (levels.getSelectedIndex() > 0) 
-				l2Data.setConfiguration(config[3]);
-			if (levels.getSelectedIndex() > 1) 
-				l3Data.setConfiguration(config[4]);
-			selectedLevel = levels.getSelectedIndex();
 		} catch (Exception ex) {
 			simulator.errorDialog.showError(ex.getMessage());
 			return;
 		}
-		simulator.storageViewer.refreshTypes();
+		
 		simulator.edit(false);
 		setVisible(false);
 	}
 	
 	private void exit() {
 		memorySettings.refresh();
-		l1Instruction.refresh();
-		l1Data.refresh();
-		l2Data.refresh();
-		l3Data.refresh();
-		levels.setSelectedIndex(selectedLevel);
-		l2Data.setEnabled(selectedLevel > 0);
-		l3Data.setEnabled(selectedLevel > 1);
-		
+		instructionLimit.setInput(Simulator.processor.getInstructionLimit());
 		setVisible(false);
 	}
 	

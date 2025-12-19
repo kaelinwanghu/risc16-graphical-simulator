@@ -13,7 +13,7 @@ public class RegisterFile {
 	private boolean r0AttemptedWrite;
 	
 	public RegisterFile(int instructionsStartAddress) {
-		registers = new ArrayList<Register>(8);
+		registers = new ArrayList<>(8);
 		for (int i = 0; i < 8; i++)
 			registers.add(new Register(i, i != 0, this));
 		pc = instructionsStartAddress;
