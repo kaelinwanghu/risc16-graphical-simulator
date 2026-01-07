@@ -389,13 +389,13 @@ public final class Assembler
 			}
 			case "halt":
 			{
-				// halt -> jalr r0, r0
+				// halt -> jalr r0, r0, SPECIAL IMMEDIATE
 				parseInstruction("jalr", new String[]{"r0", "r0"}, processor);
 				break;
 			}
 			case "lli":
 			{
-				// lli rA, imm -> addi rA, rA, (imm & 0x3f)
+				// rA, imm -> addi rA, rA, (imm & 0x3f)
 				int immediate = parseInteger(operands[1]) & 0x3f;
 				parseInstruction("addi", new String[]{operands[0], operands[0], String.valueOf(immediate)}, processor);
 				break;
