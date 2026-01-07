@@ -1,143 +1,171 @@
 package engine;
-import java.lang.reflect.Method;
 
-import engine.storage.DataCache;
-import engine.storage.InstructionCache;
-import engine.storage.Memory;
-import engine.types.Addressable;
-import engine.types.FunctionType;
-import engine.types.Instruction;
-import engine.types.WritePolicy;
+import engine.assembly.AssemblyResult;
+import engine.execution.*;
+import engine.memory.Memory;
+import engine.metadata.ProgramMetadata;
 
+/**
+ * The RiSC-16 processor.
+ * 
+ * This class is the main entry point for program execution. It:
+ * - Manages processor state (registers, PC, etc.)
+ * - Loads programs into memory
+ * - Executes instructions via ExecutionEngine
+ * - Provides query interface for current state
+ * 
+ * This is a redesign that has:
+ * - No reflection
+ * - No Object[] returns
+ * - Clear separation of concerns
+ * - Immutable state snapshots
+ * - Type-safe throughout
+ */
 public class Processor {
-	
-	private RegisterFile registerFile;
-	private Memory memory;
-	private DataCache[] dataCache;
-	private InstructionCache instructionCache;
-	private UnitSet unitSet;
-	private int instructionLimit;
-	private int instructionsExecuted;
-	
-	public Processor(int[][] cacheConfig, int[][] unitsConfig) {
-		configureStorage(cacheConfig);
-		unitSet = new UnitSet(unitsConfig);
-		registerFile = new RegisterFile(0);
-		instructionsExecuted = 0;
-	}
-	
-	public void configureStorage(int[][] config) {
-		if (config.length < 3)
-			throw new IllegalArgumentException("Invalid configuration");
-		
-		memory = new Memory(config[0][0], config[0][3]);
-		instructionCache = new InstructionCache(config[1][0], config[1][1], config[1][2], config[1][3], memory);
-		Addressable prev = memory;
-		dataCache = new DataCache[config.length - 2];
-		for (int i = config.length - 1; i >= 2; i--) {
-			dataCache[i - 2] = new DataCache(config[i][0], config[i][1], config[i][2], config[i][3]);
-			dataCache[i - 2].setWritePolicies(WritePolicy.values()[config[i][4]], WritePolicy.values()[config[i][5]]);
-			dataCache[i - 2].setNextCacheLevel(prev);
-			prev = dataCache[i - 2];
-		}
-	}
-			
-	public boolean execute(boolean stepped) throws IllegalArgumentException {
-		InstructionSet instructionSet = new InstructionSet(this);
-		Instruction instruction;
-		int oldPc;
-		do {
-			if (instructionsExecuted > instructionLimit) {
-				throw new IllegalArgumentException("Instruction limit of " + instructionLimit + " reached");
-			}
-			oldPc = registerFile.getPc();
-			instruction = instructionCache.getInstruction(oldPc).clone();
-	
-			registerFile.incrementPc(2);
-			
-			Method method = InstructionSet.getMethod(instruction.getOperation());
-			Object[] data;
-			
-			try {
-				 data = (Object[])method.invoke(instructionSet, instruction.getOperands());
-			} catch (Exception ex) {
-				registerFile.setPc(oldPc);
-				throw new IllegalArgumentException(ex.getCause().getMessage());
-			}
-						
-			instruction.setFunction((FunctionType)data[0]);
-			instruction.setDestination((Integer)data[1]);
-			instruction.setEffectiveAddress((Integer)data[2]);
-			
-			if (data.length == 4)
-				instruction.setExecutionTime((Integer)data[3]);
-			
-			unitSet.addExecutedInstruction(instruction);
-			instructionsExecuted++;
-			
-			if (registerFile.getPc() > memory.getLastInstructionAddress())
-				return true;
-		
-		} while (!stepped);
-		
-		return false;
-	}
-		
-	public int getDataAccessTime() {
-		int accessTime = 0;
-		for (int i = 0; i < dataCache.length; i++)
-			accessTime += dataCache[i].getAccesses() * dataCache[i].getAccessTime();
-
-		accessTime += memory.getDataAccesses() * memory.getAccessTime();
-		return accessTime;
-	}
-	
-	public RegisterFile getRegisterFile() {
-		return registerFile;
-	}
-	
-	public Memory getMemory() {
-		return memory;
-	}
-	
-	public DataCache getDataCache(int level) {
-		if (level > -1 && level < dataCache.length)
-			return dataCache[level];
-		return null;
-	}
-	
-	public InstructionCache getInstructionCache() {
-		return instructionCache;
-	}
-	
-	public UnitSet getUnitSet() {
-		return unitSet;
-	}
-
-	public void setInstructionLimit(int limit) {
-		if (limit < 1)
-		{
-			throw new IllegalArgumentException("Instruction limit must be at least 1");
-		}
-		this.instructionLimit = limit;
-	}
-	
-	public int getInstructionLimit() {
-		return instructionLimit;
-	}
-	
-	public int getInstructionsExecuted() {
-		return instructionsExecuted;
-	}
-	
-	public void clear() {
-		registerFile.clear(0);
-		unitSet.clear();
-		memory.clear();
-		instructionCache.clear();
-		instructionsExecuted = 0;
-		for (DataCache cache : dataCache)
-			cache.clear();
-	}
-	
+    private final Memory memory;
+    private final ExecutionEngine executionEngine;
+    private ProgramMetadata metadata;
+    private ProcessorState currentState;
+    
+    /**
+     * Creates a processor with specified memory size
+     * 
+     * @param memorySize the size of memory in bytes (must be power of 2)
+     */
+    public Processor(int memorySize) {
+        this.memory = new Memory(memorySize);
+        this.executionEngine = new ExecutionEngine(memory, null);
+        this.currentState = ProcessorState.builder().build();
+        this.metadata = null;
+    }
+    
+    /**
+     * Creates a processor with default memory size (1024 bytes)
+     */
+    public Processor() {
+        this(1024);
+    }
+    
+    /**
+     * Loads a program into memory
+     * 
+     * This clears memory, loads the program, and resets processor state.
+     * 
+     * @param assemblyResult the assembled program to load
+     */
+    public void loadProgram(AssemblyResult assemblyResult) {
+        if (assemblyResult == null) {
+            throw new IllegalArgumentException("Assembly result cannot be null");
+        }
+        
+        if (!assemblyResult.isSuccess()) {
+            throw new IllegalArgumentException("Cannot load program with errors");
+        }
+        
+        // Load program into memory
+        ProgramLoader loader = new ProgramLoader(memory);
+        this.metadata = loader.load(assemblyResult);
+		executionEngine.setMetadata(metadata);
+        
+        // Reset processor state to entry point
+        this.currentState = ProcessorState.builder()
+            .setPC(metadata.getEntryPoint())
+            .build();
+        
+    }
+    
+    /**
+     * Executes a single instruction
+     * 
+     * @return true if execution should continue, false if halted
+     * @throws ExecutionException if execution fails
+     */
+    public boolean step() throws ExecutionException {
+        if (currentState.isHalted()) {
+            return false;
+        }
+        
+        InstructionExecutor.ExecutionContext context = executionEngine.step(currentState);
+        currentState = context.getNewState();
+        
+        return !currentState.isHalted();
+    }
+    
+    /**
+     * Executes instructions until halt or error
+     * 
+     * @throws ExecutionException if execution fails
+     */
+    public void run() throws ExecutionException {
+        while (!currentState.isHalted()) {
+            step();
+        }
+    }
+    
+    /**
+     * Resets the processor to initial state
+     */
+    public void reset() {
+        int entryPoint = (metadata != null) ? metadata.getEntryPoint() : 0;
+        this.currentState = ProcessorState.builder().setPC(entryPoint).build();
+    }
+    
+    /**
+     * Clears memory and resets processor
+     */
+    public void clear() {
+        memory.clear();
+        this.metadata = null;
+        this.currentState = ProcessorState.builder().build();
+    }
+    
+    // Query methods for current state
+    
+    public ProcessorState getState() {
+        return currentState;
+    }
+    
+    public short getRegister(int regNum) {
+        return currentState.getRegister(regNum);
+    }
+    
+    public short[] getRegisters() {
+        return currentState.getRegisters();
+    }
+    
+    public int getPC() {
+        return currentState.getPC();
+    }
+    
+    public boolean isHalted() {
+        return currentState.isHalted();
+    }
+    
+    public long getCycleCount() {
+        return currentState.getCycleCount();
+    }
+    
+    public long getInstructionCount() {
+        return currentState.getInstructionCount();
+    }
+    
+    public Memory getMemory() {
+        return memory;
+    }
+    
+    public ProgramMetadata getMetadata() {
+        return metadata; // May be null if no program is loaded
+    }
+    
+    public void setInstructionLimit(int limit) {
+        executionEngine.setInstructionLimit(limit);
+    }
+    
+    public int getInstructionLimit() {
+        return executionEngine.getInstructionLimit();
+    }
+    
+    public int getMemorySize() {
+        return memory.getSize();
+    }
 }
