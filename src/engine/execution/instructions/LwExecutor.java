@@ -14,7 +14,6 @@ import engine.memory.Memory;
  * The effective address must be word-aligned (even).
  * 
  * Function type: LOAD
- * Cycles: 1 (base) + cache latency (handled by cache system)
  */
 public class LwExecutor implements InstructionExecutor {
     
@@ -51,11 +50,10 @@ public class LwExecutor implements InstructionExecutor {
             .setRegister(regA, value)
             .incrementPC(2)
             .incrementInstructions()
-            .incrementCycles(1)  // Base cycle, cache will add more
             .build();
         
         // Create execution result (cache timing would be added by cache system)
-        ExecutionResult executionResult = ExecutionResult.load(regA, effectiveAddress, 0);
+        ExecutionResult executionResult = ExecutionResult.load(regA, effectiveAddress);
         
         return new ExecutionContext(newState, executionResult);
     }

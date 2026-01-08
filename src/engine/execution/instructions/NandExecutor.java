@@ -17,7 +17,6 @@ import engine.memory.Memory;
  * - OR A, B = NAND (NOT A), (NOT B)
  * 
  * Function type: ALU
- * Cycles: 1 (base execution)
  */
 public class NandExecutor implements InstructionExecutor {
     
@@ -40,7 +39,6 @@ public class NandExecutor implements InstructionExecutor {
             .setRegister(regA, result)
             .incrementPC(2)
             .incrementInstructions()
-            .incrementCycles(1)
             .build();
         
         // Create execution result

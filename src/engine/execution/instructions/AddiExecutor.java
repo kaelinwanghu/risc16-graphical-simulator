@@ -13,7 +13,6 @@ import engine.memory.Memory;
  * The immediate is a 7-bit signed value (-64 to 63)
  * 
  * Function type: ADD
- * Cycles: 1 (base execution)
  */
 public class AddiExecutor implements InstructionExecutor {
     
@@ -35,12 +34,11 @@ public class AddiExecutor implements InstructionExecutor {
             .setRegister(regA, result)
             .incrementPC(2)
             .incrementInstructions()
-            .incrementCycles(1)
             .build();
         
         // Create execution result
-        ExecutionResult execResult = ExecutionResult.add(regA);
+        ExecutionResult executionResult = ExecutionResult.add(regA);
         
-        return new ExecutionContext(newState, execResult);
+        return new ExecutionContext(newState, executionResult);
     }
 }

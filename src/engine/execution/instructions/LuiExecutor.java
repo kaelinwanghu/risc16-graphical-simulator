@@ -19,7 +19,6 @@ import engine.memory.Memory;
  *   ADDI R1, R1, (value & 0x3F)  # Add lower 6 bits
  * 
  * Function type: LOAD
- * Cycles: 1 (base execution)
  */
 public class LuiExecutor implements InstructionExecutor {
     
@@ -37,12 +36,11 @@ public class LuiExecutor implements InstructionExecutor {
             .setRegister(regA, result)
             .incrementPC(2)
             .incrementInstructions()
-            .incrementCycles(1)
             .build();
         
         // Create execution result
-        ExecutionResult execResult = ExecutionResult.load(regA, -1, 0);
+        ExecutionResult executionResult = ExecutionResult.load(regA, -1);
         
-        return new ExecutionContext(newState, execResult);
+        return new ExecutionContext(newState, executionResult);
     }
 }

@@ -140,11 +140,7 @@ public class Processor {
     public boolean isHalted() {
         return currentState.isHalted();
     }
-    
-    public long getCycleCount() {
-        return currentState.getCycleCount();
-    }
-    
+        
     public long getInstructionCount() {
         return currentState.getInstructionCount();
     }

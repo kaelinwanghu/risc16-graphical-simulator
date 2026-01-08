@@ -7,7 +7,6 @@ package engine.execution;
  * - 8 general-purpose registers (R0-R7)
  * - Program counter (PC)
  * - Execution status (running, halted)
- * - Cycle count
  * 
  * Immutable snapshots are useful for:
  * - Debugging (examining state at breakpoints)
@@ -19,7 +18,6 @@ public class ProcessorState {
     private final short[] registers;
     private final int pc;
     private final boolean halted;
-    private final long cycleCount;
     private final long instructionCount;
     
     /**
@@ -28,10 +26,9 @@ public class ProcessorState {
      * @param registers array of 8 register values (will be copied)
      * @param pc the program counter
      * @param halted whether the processor is halted
-     * @param cycleCount the total number of cycles executed
      * @param instructionCount the total number of instructions executed
      */
-    public ProcessorState(short[] registers, int pc, boolean halted, long cycleCount, long instructionCount) {
+    public ProcessorState(short[] registers, int pc, boolean halted, long instructionCount) {
         if (registers == null || registers.length != 8) {
             throw new IllegalArgumentException("Must provide exactly 8 registers");
         }
@@ -40,7 +37,6 @@ public class ProcessorState {
         this.registers = registers.clone();
         this.pc = pc;
         this.halted = halted;
-        this.cycleCount = cycleCount;
         this.instructionCount = instructionCount;
     }
     
@@ -68,10 +64,6 @@ public class ProcessorState {
         return halted;
     }
     
-    public long getCycleCount() {
-        return cycleCount;
-    }
-    
     public long getInstructionCount() {
         return instructionCount;
     }
@@ -97,14 +89,12 @@ public class ProcessorState {
         private short[] registers;
         private int pc;
         private boolean halted;
-        private long cycleCount;
         private long instructionCount;
         
         public Builder() {
             this.registers = new short[8];
             this.pc = 0;
             this.halted = false;
-            this.cycleCount = 0;
             this.instructionCount = 0;
         }
         
@@ -112,7 +102,6 @@ public class ProcessorState {
             this.registers = state.registers.clone();
             this.pc = state.pc;
             this.halted = state.halted;
-            this.cycleCount = state.cycleCount;
             this.instructionCount = state.instructionCount;
         }
         
@@ -136,12 +125,7 @@ public class ProcessorState {
             this.halted = halted;
             return this;
         }
-        
-        public Builder setCycleCount(long count) {
-            this.cycleCount = count;
-            return this;
-        }
-        
+                
         public Builder setInstructionCount(long count) {
             this.instructionCount = count;
             return this;
@@ -151,19 +135,14 @@ public class ProcessorState {
             this.pc += offset;
             return this;
         }
-        
-        public Builder incrementCycles(long cycles) {
-            this.cycleCount += cycles;
-            return this;
-        }
-        
+                
         public Builder incrementInstructions() {
             this.instructionCount++;
             return this;
         }
         
         public ProcessorState build() {
-            return new ProcessorState(registers, pc, halted, cycleCount, instructionCount);
+            return new ProcessorState(registers, pc, halted, instructionCount);
         }
     }
     
@@ -177,7 +156,6 @@ public class ProcessorState {
             sb.append(String.format("R%d=0x%04X ", i, registers[i] & 0xFFFF));
         }
         sb.append("\n");
-        sb.append("  Cycles=").append(cycleCount).append("\n");
         sb.append("  Instructions=").append(instructionCount).append("\n");
         sb.append("  Halted=").append(halted).append("\n");
         sb.append("]");

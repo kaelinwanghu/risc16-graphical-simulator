@@ -17,7 +17,6 @@ import engine.memory.Memory;
  * then the offset is added if the branch is taken.
  * 
  * Function type: BRANCH
- * Cycles: 1 (base execution)
  */
 public class BeqExecutor implements InstructionExecutor {
     
@@ -40,9 +39,7 @@ public class BeqExecutor implements InstructionExecutor {
         int targetPC = state.getPC() + 2 + immediate;
         
         // Build new state
-        ProcessorState.Builder stateBuilder = state.toBuilder()
-            .incrementInstructions()
-            .incrementCycles(1);
+        ProcessorState.Builder stateBuilder = state.toBuilder().incrementInstructions();
         
         if (taken) {
             stateBuilder.setPC(targetPC);
@@ -53,8 +50,8 @@ public class BeqExecutor implements InstructionExecutor {
         ProcessorState newState = stateBuilder.build();
         
         // Create execution result
-        ExecutionResult execResult = ExecutionResult.branch(taken, targetPC);
+        ExecutionResult executionResult = ExecutionResult.branch(taken, targetPC);
         
-        return new ExecutionContext(newState, execResult);
+        return new ExecutionContext(newState, executionResult);
     }
 }

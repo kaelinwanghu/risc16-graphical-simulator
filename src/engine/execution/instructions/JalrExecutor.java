@@ -22,7 +22,6 @@ import engine.memory.Memory;
  * Non-zero immediates can be used for syscalls in extended implementations.
  * 
  * Function type: JUMP_AND_LINK
- * Cycles: 1 (base execution)
  */
 public class JalrExecutor implements InstructionExecutor {
     
@@ -46,8 +45,7 @@ public class JalrExecutor implements InstructionExecutor {
         ProcessorState.Builder stateBuilder = state.toBuilder()
             .setRegister(regA, (short) returnAddr)  // Store return address
             .setPC(target)                          // Jump to target
-            .incrementInstructions()
-            .incrementCycles(1);
+            .incrementInstructions();
         
         // If this is HALT, mark processor as halted
         if (isHalt) {
@@ -57,8 +55,8 @@ public class JalrExecutor implements InstructionExecutor {
         ProcessorState newState = stateBuilder.build();
         
         // Create execution result
-        ExecutionResult execResult = ExecutionResult.jumpAndLink(regA, target);
+        ExecutionResult executionResult = ExecutionResult.jumpAndLink(regA, target);
         
-        return new ExecutionContext(newState, execResult);
+        return new ExecutionContext(newState, executionResult);
     }
 }

@@ -11,7 +11,6 @@ import engine.memory.Memory;
  * Operation: regA = regB + regC
  * 
  * Function type: ADD
- * Cycles: 1 (base execution)
  */
 public class AddExecutor implements InstructionExecutor {
     
@@ -34,7 +33,6 @@ public class AddExecutor implements InstructionExecutor {
             .setRegister(regA, result)
             .incrementPC(2)  // All instructions are 2 bytes
             .incrementInstructions()
-            .incrementCycles(1)
             .build();
         
         // Create execution result

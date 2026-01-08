@@ -14,7 +14,6 @@ import engine.memory.Memory;
  * The effective address must be word-aligned (even).
  * 
  * Function type: STORE
- * Cycles: 1 (base) + cache latency (handled by cache system)
  */
 public class SwExecutor implements InstructionExecutor {
     
@@ -52,11 +51,10 @@ public class SwExecutor implements InstructionExecutor {
         ProcessorState newState = state.toBuilder()
             .incrementPC(2)
             .incrementInstructions()
-            .incrementCycles(1)  // Base cycle, cache will add more
             .build();
         
         // Create execution result
-        ExecutionResult executionResult = ExecutionResult.store(effectiveAddress, 0);
+        ExecutionResult executionResult = ExecutionResult.store(effectiveAddress);
         
         return new ExecutionContext(newState, executionResult);
     }
