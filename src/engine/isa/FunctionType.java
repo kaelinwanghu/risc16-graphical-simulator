@@ -1,7 +1,7 @@
 package engine.isa;
 
 /**
- * Categories of instruction functionality for scheduling and pipeline analysis.
+ * Categories of instruction functionality for scheduling and pipeline analysis
  * 
  * These categories are used by the out-of-order execution scheduler to determine
  * which functional units can execute which instructions, and to track dependencies

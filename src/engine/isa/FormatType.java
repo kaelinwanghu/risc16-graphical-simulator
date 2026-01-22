@@ -1,7 +1,7 @@
 package engine.isa;
 
 /**
- * The three instruction format types in RiSC-16.
+ * The three instruction format types in RiSC-16
  * 
  * - RRR: Register-Register-Register (3 registers, e.g., ADD R1, R2, R3)
  * - RRI: Register-Register-Immediate (2 registers + 7-bit signed immediate)

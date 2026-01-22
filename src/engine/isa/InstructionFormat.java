@@ -1,7 +1,7 @@
 package engine.isa;
 
 /**
- * Immutable representation of a decoded RiSC-16 instruction.
+ * Immutable representation of a decoded RiSC-16 instruction
  * 
  * This class represents an immutable instruction in its final decoded form, with all fields
  * extracted and validated.

@@ -6,7 +6,7 @@ import engine.memory.Memory;
 import engine.metadata.ProgramMetadata;
 
 /**
- * The RiSC-16 processor.
+ * The RiSC-16 processor
  * 
  * This class is the main entry point for program execution. It:
  * - Manages processor state (registers, PC, etc.)

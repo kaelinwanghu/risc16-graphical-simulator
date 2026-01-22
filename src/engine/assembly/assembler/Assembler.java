@@ -4,7 +4,7 @@ import engine.assembly.AssemblyResult;
 import java.util.List;
 
 /**
- * Main entry point for the RiSC-16 assembler.
+ * Main entry point for the RiSC-16 assembler
  * 
  * This assembler uses a clean, modular, two-pass architecture:
  * 

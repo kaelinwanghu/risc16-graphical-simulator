@@ -27,23 +27,28 @@ import java.awt.event.WindowEvent;
 import java.io.File;
 import java.util.List;
 
-import engine.Assembler;
-import engine.Processor;
+// NEW IMPORTS
+import gui.facade.EngineFacade;
+import gui.facade.EngineObserver;
+import engine.assembly.AssemblyResult;
+import engine.assembly.AssemblyError;
+import engine.execution.ProcessorState;
+import engine.execution.ExecutionException;
+
 import gui.dialogs.MessageDialog;
 import gui.dialogs.InstructionSetDialog;
-import gui.dialogs.ScheduleDialog;
 
 @SuppressWarnings("serial")
-public class Simulator extends JFrame {
+public class Simulator extends JFrame implements EngineObserver {
 
-	public static Processor processor;
+	// NEW: Private facade instead of static processor
+	private EngineFacade engineFacade;
 	
 	private InputPanel inputPanel;
 	public AssemblyPanel assemblyPanel;
 	public StorageViewer storageViewer;
 
 	public MessageDialog errorDialog;
-	private ScheduleDialog scheduleDialog;
 	public InstructionSetDialog instructionSetDialog;
 
 	private FileManager fileManager;
@@ -80,32 +85,17 @@ public class Simulator extends JFrame {
 		ImageIcon i2 = new ImageIcon(getClass().getClassLoader().getResource("gui/resources/microchip2.png"));		
 		setIconImages(Arrays.asList(i1.getImage(), i2.getImage()));
 		
-		int[][] cacheCofig = {
-			{1024, 0, 32, 100},
-			{2, 8, 8, 5},
-			{4, 16, 1, 5, 0, 2}
-		};
+		// NEW: Simple initialization with 1KB memory
+		engineFacade = new EngineFacade(1024);
+		engineFacade.addObserver(this);
 					
-		int[][] unitsConfig = {
-			{6},
-			{1, 2, 1},
-			{1, 2, 2},
-			{1, 2, 5},
-			{1, 2, 10},
-			{1, 2},
-			{1, 2}
-		};
-		
-		processor = new Processor(cacheCofig, unitsConfig);		
-		
 		errorDialog = new MessageDialog(this);
-		scheduleDialog = new ScheduleDialog(this);
 		instructionSetDialog = new InstructionSetDialog(this);
 		fileManager = new FileManager(this);
 		recentFiles = new RecentFiles();
 		
 		inputPanel = new InputPanel(this, 25, 35);
-		storageViewer = new StorageViewer(this);
+		storageViewer = new StorageViewer(this, engineFacade);
 		storageViewer.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 		
 		autoSaver = new AutoSaver(fileManager, inputPanel, this);
@@ -143,7 +133,7 @@ public class Simulator extends JFrame {
 
 		assemble = new JButton("Assemble");
 		assemble.setFocusable(false);
-		assemble.addActionListener(e -> assemble());
+		assemble.addActionListener(e -> assembleProgram());
 
 		JButton clear = new JButton("Clear");
 		clear.setFocusable(false);
@@ -248,74 +238,196 @@ public class Simulator extends JFrame {
 		setLocationRelativeTo(null);
 	}
 	
-	private void execute(boolean stepped) {
-		try {
-			processor.getRegisterFile().clearChanges();
-        	processor.getMemory().clearChanges();
-			boolean finished = processor.execute(stepped);
-			storageViewer.refresh();
-			assemblyPanel.repaint();
-			if (finished) {
-				scheduleDialog.showSchedule();
-				execute.setEnabled(false);
-				executeStep.setEnabled(false);
-				assemble.setEnabled(true);
-			}
-		} catch (Exception ex) {
-			storageViewer.refresh();
-			assemblyPanel.repaint();
-			errorDialog.showError(ex.getMessage());
+	// =================================================================
+	// NEW: EngineObserver Implementation
+	// =================================================================
+	
+	@Override
+	public void onStateChanged(ProcessorState oldState, ProcessorState newState) {
+		// Update storage viewer with new state
+		storageViewer.updateState(newState);
+		
+		// Update assembly panel highlighting
+		if (assemblyPanel != null) {
+			assemblyPanel.highlightInstruction(newState.getPC());
+		}
+		
+		// Check if halted (will trigger onHalt, but we can also check here)
+		if (newState.isHalted()) {
+			execute.setEnabled(false);
+			executeStep.setEnabled(false);
 		}
 	}
 	
-	private void assemble() {
+	@Override
+	public void onProgramLoaded(AssemblyResult result) {
+		// Program successfully assembled and loaded!
+		
+		// Clear change tracking for new program
+		storageViewer.clearChanges();
+		
+		// Update storage viewer
+		storageViewer.refresh();
+		
+		// Swap panels: InputPanel → AssemblyPanel
+		main.remove(inputPanel);
 		try {
-			Assembler.assemble(inputPanel.getProgram(), processor);
-			storageViewer.refresh();
-			execute.setEnabled(true);
-			executeStep.setEnabled(true);
-			edit.setEnabled(true);
-			assemble.setEnabled(false);
-			main.remove(inputPanel);
-			try {
-				main.remove(assemblyPanel);
-			} catch (Exception ex) {
-
-			}
-			assemblyPanel = new AssemblyPanel(storageViewer.hex.getText().equals("HEX"));
-			main.add(assemblyPanel);
-			main.validate();
-			scheduleDialog.setVisible(false);
+			main.remove(assemblyPanel);
 		} catch (Exception ex) {
-			processor.clear();
-			errorDialog.showError(ex.getMessage());
+			// assemblyPanel might not exist yet
+		}
+		
+		// Create new assembly panel with result
+		boolean isHex = storageViewer.hex.getText().equals("HEX");
+		assemblyPanel = new AssemblyPanel(result, isHex);
+		main.add(assemblyPanel);
+		main.validate();
+		
+		// Enable execution buttons
+		execute.setEnabled(true);
+		executeStep.setEnabled(true);
+		edit.setEnabled(true);
+		assemble.setEnabled(false);
+	}
+	
+	@Override
+	public void onAssemblyError(AssemblyResult result) {
+		// Assembly failed - show all errors to user
+		StringBuilder errorMsg = new StringBuilder();
+		errorMsg.append("Assembly failed with ")
+				.append(result.getErrors().size())
+				.append(" error(s):\n\n");
+		
+		for (AssemblyError error : result.getErrors()) {
+			errorMsg.append(error.getFormattedMessage()).append("\n");
+		}
+		
+		errorDialog.showError(errorMsg.toString());
+		
+		// Ensure processor is cleared
+		engineFacade.clear();
+	}
+	
+	@Override
+	public void onExecutionError(ExecutionException error) {
+		// Runtime error during execution
+		storageViewer.refresh();
+		if (assemblyPanel != null) {
+			assemblyPanel.repaint();
+		}
+		
+		errorDialog.showError(error.getMessage());
+		
+		// Disable execution buttons
+		execute.setEnabled(false);
+		executeStep.setEnabled(false);
+	}
+	
+	@Override
+	public void onHalt() {
+		// Program halted normally
+		execute.setEnabled(false);
+		executeStep.setEnabled(false);
+		assemble.setEnabled(true);
+	}
+	
+	// =================================================================
+	// NEW: Assembly Method (V2)
+	// =================================================================
+	
+	private void assembleProgram() {
+		try {
+			// Get source code from input panel
+			String sourceCode = inputPanel.getProgram();
+			
+			// Assemble through facade
+			// Facade will call observer methods (onProgramLoaded or onAssemblyError)
+			AssemblyResult result = engineFacade.assemble(sourceCode);
+			
+			// Note: Observer handles all UI updates!
+			// - If successful: onProgramLoaded() swaps panels, enables buttons
+			// - If failed: onAssemblyError() shows errors
+			
+		} catch (Exception ex) {
+			// Unexpected error (shouldn't happen with new assembler)
+			errorDialog.showError("Unexpected assembly error: " + ex.getMessage());
+			ex.printStackTrace();
 		}
 	}
+	
+	// =================================================================
+	// NEW: Execution Methods (V2)
+	// =================================================================
+	
+	private void execute(boolean stepped) {
+		try {
+			if (stepped) {
+				// Execute one instruction
+				engineFacade.step();
+				// Observer (onStateChanged) handles UI updates
+			} else {
+				// Execute until halt
+				engineFacade.run();
+				// Observer (onStateChanged + onHalt) handles UI updates
+			}
+		} catch (ExecutionException ex) {
+			// Observer (onExecutionError) already handled this
+			// No need to do anything here
+		}
+	}
+	
+	// =================================================================
+	// Edit Method (Updated)
+	// =================================================================
 	
 	public void edit(boolean clear) {
 		if (clear) {
 			inputPanel.clear();
 		}
-		processor.clear();
+		
+		// Clear through facade
+		engineFacade.clear();
+		
+		// Clear change tracking
+		storageViewer.clearChanges();
 		storageViewer.refresh();
+		
 		execute.setEnabled(false);
 		edit.setEnabled(false);
 		executeStep.setEnabled(false);
 		assemble.setEnabled(true);
+		
 		try {
 			main.remove(assemblyPanel);
 		} catch (Exception ex) {
-
+			// assemblyPanel might not exist
 		}
 		main.add(inputPanel);
 		main.validate();
 		repaint();
-		scheduleDialog.setVisible(false);
+	}
+	
+	// =================================================================
+	// NEW: Accessor for EngineFacade (used by StorageSettingsDialog)
+	// =================================================================
+	
+	/**
+	 * Gets the engine facade
+	 * Used by StorageSettingsDialog to query/configure processor
+	 * 
+	 * @return the engine facade
+	 */
+	public EngineFacade getEngineFacade() {
+		return engineFacade;
 	}
 	 
 	public static void main(String[] args) {
 		new Simulator().setVisible(true);
 	}
+	
+	// =================================================================
+	// File Operations (Unchanged)
+	// =================================================================
 	
 	private void newFile()
 	{
@@ -326,7 +438,7 @@ public class Simulator extends JFrame {
 		
 		inputPanel.clear();
 		fileManager.newFile();
-		setModified(false); // NEW
+		setModified(false);
 		edit(false);
 	}
 
@@ -341,12 +453,10 @@ public class Simulator extends JFrame {
 		if (content != null)
 		{
 			inputPanel.clear();
-			// Set the loaded content
 			inputPanel.setProgram(content);
 			setModified(false);
 			edit(false);
 			
-			// Add to recent files
 			File currentFile = fileManager.getCurrentFile();
 			if (currentFile != null)
 			{
@@ -355,10 +465,6 @@ public class Simulator extends JFrame {
 		}
 	}
 
-	/**
-	 * Helper method to prompt save if file is modified
-	 * @return true if should continue, false if cancelled
-	 */
 	private boolean promptSaveIfNeeded()
 	{
 		String filename = fileManager.getCurrentFileName();
@@ -377,10 +483,10 @@ public class Simulator extends JFrame {
 		}
 		else if (response == JOptionPane.CANCEL_OPTION)
 		{
-			return false; // Don't continue
+			return false;
 		}
 		
-		return true; // Continue without saving
+		return true;
 	}
 
 	private void saveFile()
@@ -391,14 +497,11 @@ public class Simulator extends JFrame {
 		if (success)
 		{
 			setModified(false);
-			// Add to recent files
 			File currentFile = fileManager.getCurrentFile();
 			if (currentFile != null)
 			{
 				recentFiles.addFile(currentFile);
 			}
-			
-			// Clear auto-save since we just saved manually
 			fileManager.clearAutoSave();
 		}
 	}
@@ -411,14 +514,11 @@ public class Simulator extends JFrame {
 		if (success)
 		{
 			setModified(false);
-			// Add to recent files
 			File currentFile = fileManager.getCurrentFile();
 			if (currentFile != null)
 			{
 				recentFiles.addFile(currentFile);
 			}
-			
-			// Clear auto-save
 			fileManager.clearAutoSave();
 		}
 	}
@@ -469,17 +569,11 @@ public class Simulator extends JFrame {
 		updateTitle();
 	}
 
-	/**
-	 * Gets the modified state
-	 */
 	public boolean isModified()
 	{
 		return isModified;
 	}
 
-	/**
-	 * Updates window title with filename and modified indicator
-	 */
 	private void updateTitle()
 	{
 		String filename = fileManager.getCurrentFileName();
@@ -487,12 +581,8 @@ public class Simulator extends JFrame {
 		setTitle("RiSC-16 Simulator - " + modified + filename);
 	}
 
-	/**
-	 * Handles application exit with save prompt if needed
-	 */
 	private void handleExit()
 	{
-		// If file is modified, prompt to save
 		if (isModified)
 		{
 			String filename = fileManager.getCurrentFileName();
@@ -506,25 +596,20 @@ public class Simulator extends JFrame {
 			
 			if (response == JOptionPane.YES_OPTION)
 			{
-				// Save the file
 				String content = inputPanel.getProgram();
 				boolean success = fileManager.save(content);
 				
 				if (!success)
 				{
-					// Save failed or was cancelled - don't exit
 					return;
 				}
 			}
 			else if (response == JOptionPane.CANCEL_OPTION)
 			{
-				// User cancelled - don't exit
 				return;
 			}
-			// If NO, continue to exit without saving
 		}
 		
-		// Stop auto-saver and exit
 		autoSaver.stop();
 		System.exit(0);
 	}

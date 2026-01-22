@@ -21,25 +21,31 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.TitledBorder;
 
+import gui.facade.EngineFacade;
+
 @SuppressWarnings("serial")
 public class StorageSettingsDialog extends JDialog {
 	
 	private Simulator simulator;
 	private MemorySettings memorySettings;
 	private InputBox instructionLimit;
+	private EngineFacade engineFacade;
 	
-	public StorageSettingsDialog(Simulator simulator) {
+	public StorageSettingsDialog(Simulator simulator, EngineFacade engineFacade) {
 		super(simulator, "Storage Settings", true);
 		
 		this.simulator = simulator;
+		this.engineFacade = engineFacade;
 		
 		setIconImage(simulator.getIconImage());
 		
+		// Memory size configuration
 		memorySettings = new MemorySettings();
-		memorySettings.setConfiguration(new int[]{1, 1, 0, 32, 100});
+		memorySettings.setConfiguration(new int[]{1, 1}); // Default: 1 KiB
 		
+		// Instruction limit configuration
 		instructionLimit = new InputBox("Instruction Limit", 140, 10, "");
-		instructionLimit.setInput(65535); // 2^16 - 1 as default
+		instructionLimit.setInput(65535); // Default: 2^16 - 1
 		
 		JLabel execLabel = new JLabel("Execution Settings");
 		execLabel.setFont(new Font("Consolas", Font.PLAIN, 19));
@@ -98,61 +104,76 @@ public class StorageSettingsDialog extends JDialog {
 	}
 	
 	private void apply() {
-		// Hardcode cache
-		int[][] config = new int[5][];
+		// Get memory configuration
+		int[] config;
 		try {
-			config[0] = memorySettings.getConfiguration();
-			// Hardcoded L1 Instruction Cache: 2B line, 8 lines, 8-way, 5 cycles
-			config[1] = new int[]{2, 0, 8, 8, 5};
-			// Hardcoded L1 Data Cache: 4B line, 16 lines, direct-mapped, 5 cycles, write-back, write-allocate
-			config[2] = new int[]{4, 0, 16, 1, 5, 0, 0};
-			// Hardcoded L2 Data Cache: 8B line, 32 lines, 2-way, 10 cycles, write-back, write-allocate
-			config[3] = new int[]{8, 0, 32, 2, 10, 0, 0};
-			// Hardcoded L3 Data Cache: 16B line, 64 lines, 4-way, 20 cycles, write-back, write-allocate
-			config[4] = new int[]{16, 0, 64, 4, 20, 0, 0};
+			config = memorySettings.getConfiguration();
 		} catch (Exception ex) {
-			simulator.errorDialog.showError("Invalid/Missing input");
+			simulator.errorDialog.showError("Invalid/Missing memory size");
 			return;
 		}
 		
-		int[][] newConfig = new int[config.length][6];
-		for (int i = 0; i < newConfig.length; i++) {
-			newConfig[i][0] = config[i][0] * (int)Math.pow(1024, config[i][1]);
-			newConfig[i][1] = config[i][2];
-			newConfig[i][2] = config[i][3];
-			newConfig[i][3] = config[i][4];
-			if (config[i].length > 5) {
-				newConfig[i][4] = config[i][5];
-				newConfig[i][5] = config[i][6] + 2;
-			}
+		// Calculate memory size in bytes
+		int memorySize = config[0] * (int)Math.pow(1024, config[1]);
+		
+		// Validate memory size
+		if (memorySize < 128 || memorySize > 4 * 1024 * 1024) {
+			simulator.errorDialog.showError("Memory size must be between 128 bytes and 4 MiB");
+			return;
 		}
 		
+		// Get instruction limit
+		int limit;
 		try {
-			Simulator.processor.configureStorage(newConfig);
-			
-			// Apply instruction limit (Note: Currently bad)
-			int limit = instructionLimit.getValue();
+			limit = instructionLimit.getValue();
 			if (limit < 1) {
 				simulator.errorDialog.showError("Instruction limit must be at least 1");
 				return;
 			}
-			Simulator.processor.setInstructionLimit(limit);
-			
-			Simulator.processor.clear();
-			memorySettings.setConfiguration(config[0]);
 		} catch (Exception ex) {
-			simulator.errorDialog.showError(ex.getMessage());
+			simulator.errorDialog.showError("Invalid instruction limit");
 			return;
 		}
 		
-		simulator.edit(false);
+		// Check if memory size changed
+		int currentSize = engineFacade.getMemory().getSize();
+		if (memorySize != currentSize) {
+			// Memory size changed - need to recreate processor
+			simulator.errorDialog.showError(
+				"Memory size change requires restarting the simulator.\n" +
+				"Current size: " + currentSize + " bytes\n" +
+				"Requested size: " + memorySize + " bytes"
+			);
+			// Don't apply memory change for now
+		}
+		
+		// Apply instruction limit (this we CAN change)
+		engineFacade.setInstructionLimit(limit);
+		
 		setVisible(false);
 	}
 	
 	private void exit() {
-		memorySettings.refresh();
-		instructionLimit.setInput(Simulator.processor.getInstructionLimit());
+		// Reset to current values
+		int currentSize = engineFacade.getMemory().getSize();
+		int currentLimit = engineFacade.getInstructionLimit();
+		
+		// Figure out the unit (bytes, KiB, MiB)
+		int size, unit;
+		if (currentSize % (1024 * 1024) == 0) {
+			size = currentSize / (1024 * 1024);
+			unit = 2; // MiB
+		} else if (currentSize % 1024 == 0) {
+			size = currentSize / 1024;
+			unit = 1; // KiB
+		} else {
+			size = currentSize;
+			unit = 0; // Bytes
+		}
+		
+		memorySettings.setConfiguration(new int[]{size, unit});
+		instructionLimit.setInput(currentLimit);
+		
 		setVisible(false);
 	}
-	
 }

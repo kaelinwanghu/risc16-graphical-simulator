@@ -1,7 +1,7 @@
 package engine.assembly.assembler;
 
 /**
- * Represents a tokenized line of assembly code.
+ * Represents a tokenized line of assembly code
  * 
  * After preprocessing (comment removal, label extraction), each non-blank line
  * becomes a Token with:

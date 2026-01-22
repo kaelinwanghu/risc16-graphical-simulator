@@ -1,25 +1,27 @@
 package gui;
 
 import gui.components.ResizableTable;
+import gui.facade.EngineFacade;
 import gui.dialogs.StorageSettingsDialog;
+import engine.execution.ProcessorState;
+import engine.memory.Memory;
+import engine.metadata.ProgramMetadata;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
-import java.awt.Component;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -36,23 +38,30 @@ public class StorageViewer extends JPanel {
 	private JTextArea data;
 	private JComboBox<String> type;
 	private ResizableTable resizableTable;
-	private StorageSettingsDialog storageSettings;
-
-	private HashSet<Integer> changedItems;
-	private boolean r0AttemptedWrite;
 	
-	public StorageViewer(final Simulator simulator) {
+	private EngineFacade engineFacade;
+	private Simulator simulator;
+	
+	// Change tracking for highlighting
+	private short[] lastRegisterValues = new short[8];
+	private Set<Integer> changedRegisters = new HashSet<>();
+	private Set<Integer> changedMemoryAddresses = new HashSet<>();
+	
+	public StorageViewer(final Simulator simulator, EngineFacade engineFacade) {
 		super(new BorderLayout(0, 10));
 		
-		storageSettings = new StorageSettingsDialog(simulator);
-		changedItems = new HashSet<>();
-		r0AttemptedWrite = false;
+		this.simulator = simulator;
+		this.engineFacade = engineFacade;
 		
-		resizableTable = new ResizableTable(new int[]{20, 10, 0, 0})
-		{
+		// Initialize last values
+		for (int i = 0; i < 8; i++) {
+			lastRegisterValues[i] = 0;
+		}
+		
+		// Table for displaying registers or memory
+		resizableTable = new ResizableTable(new int[]{20, 15, 0}) {
 			@Override
-			public Component prepareRenderer(TableCellRenderer renderer, int rowIndex, int vColIndex)
-			{
+			public Component prepareRenderer(TableCellRenderer renderer, int rowIndex, int vColIndex) {
 				Component c = super.prepareRenderer(renderer, rowIndex, vColIndex);
 				
 				// Default appearance
@@ -60,56 +69,33 @@ public class StorageViewer extends JPanel {
 				c.setFont(c.getFont().deriveFont(Font.PLAIN));
 				
 				boolean shouldHighlight = false;
-				Color highlightColor = new Color(200, 255, 200);
+				Color highlightColor = new Color(200, 255, 200); // Light green
 				
 				// Check if this row should be highlighted
-				if (type.getSelectedIndex() == 0)
-				{
+				if (type.getSelectedIndex() == 0) {
 					// Registers view
-					if (rowIndex == 0 && r0AttemptedWrite)
-					{
+					if (rowIndex == 0 && lastRegisterValues[0] != 0) {
+						// R0 attempted write (special case - yellow)
 						shouldHighlight = true;
 						highlightColor = new Color(255, 255, 150);
-					}
-					else if (changedItems.contains(rowIndex))
-					{
+					} else if (changedRegisters.contains(rowIndex)) {
+						// Normal register change
 						shouldHighlight = true;
-						highlightColor = new Color(200, 255, 200);
 					}
-				}
-				else if (type.getSelectedIndex() == 1)
-				{
-					// Memory view
-					try
-					{
-						String addrStr = (String) getValueAt(rowIndex, 0);
-						int address = parseAddressString(addrStr);
-						
-						if (Simulator.processor.getMemory().hasChanged(address))
-						{
-							shouldHighlight = true;
-							highlightColor = new Color(200, 255, 200);
-						}
-					}
-					catch (Exception e)
-					{
-						// Ignore
-					}
+				} else if (type.getSelectedIndex() == 1) {
+					// Memory view - could highlight changed addresses
+					// (Not implemented yet - would need to track memory changes)
 				}
 				
 				// Apply highlighting with padding
-				if (c instanceof JLabel)
-				{
+				if (c instanceof JLabel) {
 					JLabel label = (JLabel) c;
-					if (shouldHighlight)
-					{
+					if (shouldHighlight) {
 						label.setBackground(highlightColor);
 						label.setFont(label.getFont().deriveFont(Font.BOLD));
 						label.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
 						label.setOpaque(true);
-					}
-					else
-					{
+					} else {
 						label.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
 						label.setOpaque(false);
 					}
@@ -118,9 +104,9 @@ public class StorageViewer extends JPanel {
 				return c;
 			}
 		};
-
+		
 		resizableTable.setRowHeight(20);
-		resizableTable.setIntercellSpacing(new Dimension(0, 1));  // No horizontal gap, small vertical
+		resizableTable.setIntercellSpacing(new Dimension(0, 1));
 
 		JScrollPane scrollPane = new JScrollPane(resizableTable); 
 		scrollPane.setBorder(new LineBorder(Color.GRAY, 1));
@@ -129,38 +115,43 @@ public class StorageViewer extends JPanel {
 		scrollPane.getViewport().setOpaque(false);
 		scrollPane.setOpaque(false);
 		
+		// Type selector (Registers or Memory)
 		type = new JComboBox<String>(new String[]{"Registers", "Memory"});
 		type.setFocusable(false);
 		type.addItemListener(new ItemListener() {
-			
 			public void itemStateChanged(ItemEvent arg0) {
 				refresh();
 			}
-			
 		});
 
+		// Hex/Dec toggle button
 		hex = new JButton("HEX");
 		hex.setFocusable(false);
-		hex.addActionListener(new ActionListener() {
-
-			public void actionPerformed(ActionEvent e) {
-				hex.setText(hex.getText().equals("HEX")? "DEC" : "HEX");
-				refresh();
-				if (simulator.assemblyPanel != null)
-					simulator.assemblyPanel.setFormat(hex.getText().equals("HEX"));
+		hex.addActionListener(e -> {
+			hex.setText(hex.getText().equals("HEX") ? "DEC" : "HEX");
+			refresh();
+			if (simulator.assemblyPanel != null) {
+				simulator.assemblyPanel.setFormat(hex.getText().equals("HEX"));
 			}
-
 		});
 		
+		// Settings button
+		JButton settings = new JButton("Settings");
+		settings.setFocusable(false);
+		settings.addActionListener(e -> {
+			StorageSettingsDialog dialog = new StorageSettingsDialog(simulator, engineFacade);
+			dialog.setVisible(true);
+		});
+		
+		// Info text area
 		data = new JTextArea(3, 10);
-		data.setBorder(BorderFactory.createCompoundBorder(new LineBorder(Color.GRAY, 1), BorderFactory.createEmptyBorder(5, 10, 5, 5)));
+		data.setBorder(BorderFactory.createCompoundBorder(
+			new LineBorder(Color.GRAY, 1), 
+			BorderFactory.createEmptyBorder(5, 10, 5, 5)));
 		data.setEnabled(false);
 		data.setDisabledTextColor(new Color(100, 100, 100));
 		
-		JButton settings = new JButton("Settings");
-		settings.setFocusable(false);
-		settings.addActionListener(e -> storageSettings.setVisible(true));
-		
+		// Layout
 		JPanel p1 = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
 		p1.add(settings);
 		p1.add(Box.createRigidArea(new Dimension(5, 0)));
@@ -185,65 +176,135 @@ public class StorageViewer extends JPanel {
 		refresh();
 	}
 
-	public void refresh() {
-		Object[] text = null;
-		boolean isHex = hex.getText().equals("HEX");
-		switch (type.getSelectedIndex()) {
-			case 0 :
-				text = Simulator.processor.getRegisterFile().displayRegisters(isHex);
-                // Extract change tracking info
-                if (text.length >= 5)
-                {
-					try
-					{
-						@SuppressWarnings("unchecked")
-						HashSet<Integer> changes = (HashSet<Integer>) text[3];
-						changedItems = changes;
-						r0AttemptedWrite = (Boolean) text[4];
-					}
-					catch (Exception e)
-					{
-						// Fallback if casting fails
-						changedItems = new HashSet<>();
-						r0AttemptedWrite = false;
-						e.printStackTrace();  // For debugging
-					}                }
-                break;
-			case 1 :
-				text = Simulator.processor.getMemory().displayDataWords(isHex);
-                changedItems = new HashSet<>();  // Not used for memory
-                r0AttemptedWrite = false;
-                break;
-		}
-		resizableTable.setData((String[][])text[0], (String[])text[1]);
-		data.setText((String) text[2]);
-	}
-	
-	public void refreshTypes() {
-		ArrayList<String> types = new ArrayList<String>(
-				Arrays.asList("Registers", "L1 Instruction Cache", "L1 Data Cache", "Memory (Words)", "Memory (Bytes)"));
-		if (Simulator.processor.getDataCache(1) != null)
-			types.add(3, "L2 Data Cache");
-		if (Simulator.processor.getDataCache(2) != null)
-			types.add(4, "L3 Data Cache");
+	/**
+	 * Updates the display based on new processor state
+	 * Called by observer when state changes
+	 */
+	public void updateState(ProcessorState state) {
+		// Clear change tracking for next step
+		clearChanges();
 		
-		type.setModel(new DefaultComboBoxModel<String>(types.toArray(new String[0])));
+		// Track which registers changed
+		for (int i = 0; i < 8; i++) {
+			short currentValue = state.getRegister(i);
+			if (currentValue != lastRegisterValues[i]) {
+				changedRegisters.add(i);
+				lastRegisterValues[i] = currentValue;
+			}
+		}
+		
+		refresh();
 	}
 	
-	public Dimension getPreferredSize()
-	{
+	/**
+	 * Clears change tracking (called before assembly or reset)
+	 */
+	public void clearChanges() {
+		changedRegisters.clear();
+		changedMemoryAddresses.clear();
+	}
+
+	/**
+	 * Refreshes the current view (registers or memory)
+	 */
+	public void refresh() {
+		boolean isHex = hex.getText().equals("HEX");
+		
+		switch (type.getSelectedIndex()) {
+			case 0: // Registers
+				displayRegisters(isHex);
+				break;
+			case 1: // Memory
+				displayMemory(isHex);
+				break;
+		}
+	}
+	
+	/**
+	 * Displays register contents
+	 */
+	private void displayRegisters(boolean isHex) {
+		ProcessorState state = engineFacade.getState();
+		
+		// Build table data
+		String[][] tableData = new String[8][2];
+		for (int i = 0; i < 8; i++) {
+			tableData[i][0] = " R" + i;
+			short value = state.getRegister(i);
+			tableData[i][1] = " " + formatValue(value, isHex);
+		}
+		
+		resizableTable.setData(tableData, new String[]{"Reg", "Value"});
+		
+		// Update info text
+		StringBuilder info = new StringBuilder();
+		info.append("PC: ").append(formatValue(state.getPC(), isHex)).append("\n");
+		info.append("Instructions: ").append(state.getInstructionCount()).append("\n");
+		info.append("Halted: ").append(state.isHalted() ? "Yes" : "No");
+		
+		data.setText(info.toString());
+	}
+	
+	/**
+	 * Displays memory contents
+	 */
+	private void displayMemory(boolean isHex) {
+		Memory memory = engineFacade.getMemory();
+		ProgramMetadata metadata = engineFacade.getMetadata();
+		
+		// Determine range to display
+		int maxAddress = Math.min(1024, memory.getSize()); // Show first 512 words (1024 bytes)
+		
+		List<String[]> rows = new ArrayList<>();
+		
+		for (int addr = 0; addr < maxAddress; addr += 2) {
+			if (memory.isValidAddress(addr + 1)) {
+				short value = memory.readWord(addr);
+				
+				String addrStr = " " + formatValue(addr, isHex);
+				String valueStr = " " + formatValue(value & 0xFFFF, isHex);
+				
+				// Check for label at this address
+				String label = "";
+				if (metadata != null && metadata.hasLabel(addr)) {
+					label = " " + metadata.getLabel(addr);
+				}
+				
+				rows.add(new String[]{addrStr, valueStr, label});
+			}
+		}
+		
+		resizableTable.setData(
+			rows.toArray(new String[0][]), 
+			new String[]{"Address", "Value", "Label"});
+		
+		// Update info text
+		StringBuilder info = new StringBuilder();
+		info.append("Showing first ").append(maxAddress / 2).append(" words\n");
+		info.append("Memory size: ").append(memory.getSize()).append(" bytes\n");
+		
+		if (metadata != null) {
+			info.append("Instructions: ").append(metadata.getInstructionCount()).append("\n");
+			info.append("Data words: ").append(metadata.getDataCount());
+		}
+		
+		data.setText(info.toString());
+	}
+	
+	/**
+	 * Formats a value for display (hex or decimal)
+	 */
+	private String formatValue(int value, boolean isHex) {
+		if (isHex) {
+			return String.format("0x%04X", value & 0xFFFF);
+		} else {
+			// Display as signed 16-bit for readability
+			short signed = (short) value;
+			return String.valueOf(signed);
+		}
+	}
+	
+	public Dimension getPreferredSize() {
 		return new Dimension(500, super.getPreferredSize().height);
-	}
-	
-	    private int parseAddressString(String addrStr)
-    {
-        if (addrStr.startsWith("0x") || addrStr.startsWith("0X"))
-        {
-            return Integer.parseInt(addrStr.substring(2), 16);
-        }
-        else
-        {
-            return Integer.parseInt(addrStr);
-        }
 	}
 }
