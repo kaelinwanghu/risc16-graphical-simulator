@@ -22,6 +22,7 @@ public class ProgramMetadata {
     private final Map<Integer, String> addressToLabel;
     private final Map<String, Integer> labelToAddress;
     private final int entryPoint;
+    private final int lastInstructionAddress;
     
     /**
      * Creates empty program metadata with a specified entry point
@@ -34,6 +35,7 @@ public class ProgramMetadata {
         this.addressToLabel = new HashMap<>();
         this.labelToAddress = new HashMap<>();
         this.entryPoint = entryPoint;
+        this.lastInstructionAddress = -1;
     }
     
     /**
@@ -45,6 +47,7 @@ public class ProgramMetadata {
         this.addressToLabel = new HashMap<>(builder.addressToLabel);
         this.labelToAddress = new HashMap<>(builder.labelToAddress);
         this.entryPoint = builder.entryPoint;
+        this.lastInstructionAddress = builder.lastInstructionAddress;
     }
     
     // Query methods
@@ -120,6 +123,10 @@ public class ProgramMetadata {
     
     public int getDataCount() {
         return dataAddresses.size();
+    }
+
+    public int getLastInstructionAddress() {
+        return lastInstructionAddress;
     }
     
     /**
@@ -197,6 +204,7 @@ public class ProgramMetadata {
         private final Set<Integer> dataAddresses = new HashSet<>();
         private final Map<Integer, String> addressToLabel = new HashMap<>();
         private final Map<String, Integer> labelToAddress = new HashMap<>();
+        private int lastInstructionAddress = -1;
         private int entryPoint = 0;
         
         public Builder entryPoint(int address) {
@@ -207,6 +215,9 @@ public class ProgramMetadata {
         public Builder markInstruction(int address) {
             instructionAddresses.add(address);
             dataAddresses.remove(address);
+            if (address > lastInstructionAddress) {
+                lastInstructionAddress = address;
+            }
             return this;
         }
         

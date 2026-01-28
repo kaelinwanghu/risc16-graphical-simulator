@@ -38,6 +38,7 @@ public class StorageViewer extends JPanel {
 	private JTextArea data;
 	private JComboBox<String> type;
 	private ResizableTable resizableTable;
+	private StorageSettingsDialog settingsDialog;
 	
 	private EngineFacade engineFacade;
 	private Simulator simulator;
@@ -135,12 +136,12 @@ public class StorageViewer extends JPanel {
 			}
 		});
 		
+		this.settingsDialog = new StorageSettingsDialog(simulator, engineFacade);
 		// Settings button
 		JButton settings = new JButton("Settings");
 		settings.setFocusable(false);
 		settings.addActionListener(e -> {
-			StorageSettingsDialog dialog = new StorageSettingsDialog(simulator, engineFacade);
-			dialog.setVisible(true);
+			settingsDialog.setVisible(true);
 		});
 		
 		// Info text area
@@ -306,5 +307,16 @@ public class StorageViewer extends JPanel {
 	
 	public Dimension getPreferredSize() {
 		return new Dimension(500, super.getPreferredSize().height);
+	}
+
+	public void setEngineFacade(EngineFacade engineFacade) {
+		this.engineFacade = engineFacade;
+		this.settingsDialog.setEngineFacade(engineFacade);
+
+		for (int i = 0; i < 8; i++) {
+			lastRegisterValues[i] = 0;
+		}
+
+		clearChanges();
 	}
 }

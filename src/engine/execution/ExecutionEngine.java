@@ -83,11 +83,6 @@ public class ExecutionEngine {
         
         int pc = state.getPC();
         
-        // Validate PC is in bounds
-        if (!memory.isValidAddress(pc) || !memory.isValidAddress(pc + 1)) {
-            throw new ExecutionException(String.format("PC out of bounds: 0x%04X", pc), pc);
-        }
-        
         // Validate PC is word-aligned
         if (!memory.isWordAligned(pc)) {
             throw new ExecutionException(String.format("PC not word-aligned: 0x%04X", pc), pc);
@@ -95,7 +90,13 @@ public class ExecutionEngine {
         
         // Check if PC points to an instruction (if metadata available)
         if (metadata != null && !metadata.isInstruction(pc)) {
-            throw new ExecutionException("PC points to non-instruction memory", pc);
+            if (pc > metadata.getLastInstructionAddress()) {
+                ProcessorState haltedState = state.toBuilder().setHalted(true).build();
+                ExecutionResult result = ExecutionResult.builder(engine.isa.FunctionType.JUMP_AND_LINK).build();
+                return new InstructionExecutor.ExecutionContext(haltedState, result);               
+            } else {
+                throw new ExecutionException(String.format("PC does not point to an instruction: 0x%04X", pc), pc);
+            }
         }
         
         // Fetch and decode instruction

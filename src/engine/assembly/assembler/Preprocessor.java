@@ -109,7 +109,8 @@ public final class Preprocessor {
             // Split operands by comma and/or whitespace
             operands = splitOperands(operandStr);
         } else {
-            throw new AssemblyException(lineNumber, "Missing operands in statement", originalLine, AssemblyError.ErrorType.SYNTAX_ERROR);
+            operation = statement.toLowerCase();
+            operands = new String[0];
         }
         
         return new Token(lineNumber, label, operation, operands, originalLine);

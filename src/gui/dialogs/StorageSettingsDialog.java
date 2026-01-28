@@ -45,7 +45,7 @@ public class StorageSettingsDialog extends JDialog {
 		
 		// Instruction limit configuration
 		instructionLimit = new InputBox("Instruction Limit", 140, 10, "");
-		instructionLimit.setInput(65535); // Default: 2^16 - 1
+		instructionLimit.setInput(engineFacade.getInstructionLimit());
 		
 		JLabel execLabel = new JLabel("Execution Settings");
 		execLabel.setFont(new Font("Consolas", Font.PLAIN, 19));
@@ -116,7 +116,12 @@ public class StorageSettingsDialog extends JDialog {
 		// Calculate memory size in bytes
 		int memorySize = config[0] * (int)Math.pow(1024, config[1]);
 		
-		// Validate memory size
+		// Validate memory size is a power of 2
+		if ((memorySize & (memorySize - 1)) != 0) {
+			simulator.errorDialog.showError("Memory size must be a power of 2");
+			return;
+		}
+				
 		if (memorySize < 128 || memorySize > 4 * 1024 * 1024) {
 			simulator.errorDialog.showError("Memory size must be between 128 bytes and 4 MiB");
 			return;
@@ -137,22 +142,19 @@ public class StorageSettingsDialog extends JDialog {
 		
 		// Check if memory size changed
 		int currentSize = engineFacade.getMemory().getSize();
-		if (memorySize != currentSize) {
-			// Memory size changed - need to recreate processor
-			simulator.errorDialog.showError(
-				"Memory size change requires restarting the simulator.\n" +
-				"Current size: " + currentSize + " bytes\n" +
-				"Requested size: " + memorySize + " bytes"
-			);
-			// Don't apply memory change for now
+		if (memorySize != currentSize) {			
+			// Create new facade with new memory size
+			simulator.recreateEngineFacade(memorySize);
+			memorySettings.setConfiguration(new int[]{memorySize / (int)Math.pow(1024, config[1]), config[1]});
+			// Return to edit mode
+			simulator.edit(false);
 		}
 		
-		// Apply instruction limit (this we CAN change)
+		// Apply instruction limit (works regardless of memory change)
 		engineFacade.setInstructionLimit(limit);
 		
 		setVisible(false);
-	}
-	
+	}	
 	private void exit() {
 		// Reset to current values
 		int currentSize = engineFacade.getMemory().getSize();
@@ -175,5 +177,9 @@ public class StorageSettingsDialog extends JDialog {
 		instructionLimit.setInput(currentLimit);
 		
 		setVisible(false);
+	}
+
+	public void setEngineFacade(EngineFacade engineFacade) {
+		this.engineFacade = engineFacade;
 	}
 }

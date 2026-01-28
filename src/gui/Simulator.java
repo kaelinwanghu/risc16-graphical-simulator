@@ -85,7 +85,6 @@ public class Simulator extends JFrame implements EngineObserver {
 		ImageIcon i2 = new ImageIcon(getClass().getClassLoader().getResource("gui/resources/microchip2.png"));		
 		setIconImages(Arrays.asList(i1.getImage(), i2.getImage()));
 		
-		// NEW: Simple initialization with 1KB memory
 		engineFacade = new EngineFacade(1024);
 		engineFacade.addObserver(this);
 					
@@ -420,13 +419,36 @@ public class Simulator extends JFrame implements EngineObserver {
 	public EngineFacade getEngineFacade() {
 		return engineFacade;
 	}
+	
+	/**
+	 * Recreates the engine facade with new memory size
+	 * This is called when memory size is changed in settings
+	 * 
+	 * @param newMemorySize the new memory size in bytes
+	 */
+	public void recreateEngineFacade(int newMemorySize) {
+		if (engineFacade != null) {
+			engineFacade.removeObserver(this);
+		}
+		
+		// Create new facade
+		engineFacade = new EngineFacade(newMemorySize);
+		engineFacade.addObserver(this);
+		
+		// Update storage viewer reference
+		storageViewer.setEngineFacade(engineFacade);
+		
+		// Clear any displayed state
+		storageViewer.clearChanges();
+		storageViewer.refresh();
+	}
 	 
 	public static void main(String[] args) {
 		new Simulator().setVisible(true);
 	}
 	
 	// =================================================================
-	// File Operations (Unchanged)
+	// File Operations
 	// =================================================================
 	
 	private void newFile()
