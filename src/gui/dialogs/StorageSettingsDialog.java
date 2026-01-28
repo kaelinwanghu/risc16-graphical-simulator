@@ -1,9 +1,5 @@
 package gui.dialogs;
 
-import gui.Simulator;
-import gui.components.InputBox;
-import gui.components.MemorySettings;
-
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
@@ -21,21 +17,29 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.TitledBorder;
 
+import gui.Simulator;
+import gui.components.InputBox;
+import gui.components.MemorySettings;
 import gui.facade.EngineFacade;
+import gui.StorageViewer;
 
 @SuppressWarnings("serial")
 public class StorageSettingsDialog extends JDialog {
 	
 	private Simulator simulator;
+	private StorageViewer storageViewer;
 	private MemorySettings memorySettings;
 	private InputBox instructionLimit;
+	private InputBox memoryViewStart;
+	private InputBox memoryViewCount;
 	private EngineFacade engineFacade;
 	
-	public StorageSettingsDialog(Simulator simulator, EngineFacade engineFacade) {
+	public StorageSettingsDialog(Simulator simulator, StorageViewer storageViewer, EngineFacade engineFacade) {
 		super(simulator, "Storage Settings", true);
 		
 		this.simulator = simulator;
 		this.engineFacade = engineFacade;
+		this.storageViewer = storageViewer;
 		
 		setIconImage(simulator.getIconImage());
 		
@@ -45,7 +49,10 @@ public class StorageSettingsDialog extends JDialog {
 		
 		// Instruction limit configuration
 		instructionLimit = new InputBox("Instruction Limit", 140, 10, "");
-		instructionLimit.setInput(engineFacade.getInstructionLimit());
+		instructionLimit.setInput(65535); // Default: 65,535
+
+		memoryViewStart = new InputBox("Memory View Start", 140, 10, "(address)");
+    	memoryViewCount = new InputBox("Memory View Count", 140, 10, "(words)");
 		
 		JLabel execLabel = new JLabel("Execution Settings");
 		execLabel.setFont(new Font("Consolas", Font.PLAIN, 19));
@@ -59,9 +66,22 @@ public class StorageSettingsDialog extends JDialog {
 		executionPanel.add(execLabel);
 		executionPanel.add(instructionLimit);
 		
-		JPanel mainPanel = new JPanel(new GridLayout(1, 2, 20, 0));
+		JLabel memViewLabel = new JLabel("Memory Viewer");
+		memViewLabel.setFont(new Font("Consolas", Font.PLAIN, 19));
+		memViewLabel.setForeground(Color.RED);
+		JPanel memViewPanel = new JPanel(new GridLayout(3, 1, 0, 5));
+    	memViewPanel.setBorder(BorderFactory.createCompoundBorder(
+        	BorderFactory.createTitledBorder(null, "", TitledBorder.LEFT, TitledBorder.TOP), 
+        	BorderFactory.createEmptyBorder(5, 0, 5, 0)
+    	));
+		memViewPanel.add(memViewLabel);
+    	memViewPanel.add(memoryViewStart);
+    	memViewPanel.add(memoryViewCount);
+
+		JPanel mainPanel = new JPanel(new GridLayout(1, 3, 20, 0));
 		mainPanel.add(memorySettings);
 		mainPanel.add(executionPanel);
+		mainPanel.add(memViewPanel);
 		mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 		
 		JButton exit = new JButton("Exit");
@@ -139,6 +159,30 @@ public class StorageSettingsDialog extends JDialog {
 			simulator.errorDialog.showError("Invalid instruction limit");
 			return;
 		}
+
+		int viewStart, viewCount;
+    	try {
+			viewStart = memoryViewStart.getValue();
+			viewCount = memoryViewCount.getValue();
+			
+			if (viewStart < 0) {
+				simulator.errorDialog.showError("Memory view start must be non-negative");
+				return;
+			}
+			
+			if (viewStart % 2 != 0) {
+				simulator.errorDialog.showError("Memory view start must be word-aligned (even address)");
+				return;
+			}
+			
+			if (viewCount < 1 || viewCount > 65535) {
+				simulator.errorDialog.showError("Memory view count must be between 1 and 65,535 words");
+				return;
+			}
+		} catch (Exception ex) {
+			simulator.errorDialog.showError("Invalid memory view settings");
+			return;
+		}
 		
 		// Check if memory size changed
 		int currentSize = engineFacade.getMemory().getSize();
@@ -153,6 +197,8 @@ public class StorageSettingsDialog extends JDialog {
 		// Apply instruction limit (works regardless of memory change)
 		engineFacade.setInstructionLimit(limit);
 		
+		storageViewer.setMemoryViewRange(viewStart, viewCount);
+
 		setVisible(false);
 	}	
 	private void exit() {
@@ -175,6 +221,8 @@ public class StorageSettingsDialog extends JDialog {
 		
 		memorySettings.setConfiguration(new int[]{size, unit});
 		instructionLimit.setInput(currentLimit);
+		memoryViewStart.setInput(storageViewer.getMemoryViewStart());
+        memoryViewCount.setInput(storageViewer.getMemoryViewCount());
 		
 		setVisible(false);
 	}

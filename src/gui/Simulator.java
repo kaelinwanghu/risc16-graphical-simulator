@@ -328,6 +328,20 @@ public class Simulator extends JFrame implements EngineObserver {
 		execute.setEnabled(false);
 		executeStep.setEnabled(false);
 		assemble.setEnabled(true);
+			ProcessorState finalState = engineFacade.getState();
+		javax.swing.JOptionPane.showMessageDialog(
+			this,
+			String.format(
+				"""
+				Program halted.
+				Instructions executed: %d
+				Final PC: 0x%04X""",
+				finalState.getInstructionCount(),
+				finalState.getPC()
+			),
+			"Program Halted",
+			javax.swing.JOptionPane.INFORMATION_MESSAGE
+		);
 	}
 	
 	// =================================================================
@@ -383,13 +397,9 @@ public class Simulator extends JFrame implements EngineObserver {
 		if (clear) {
 			inputPanel.clear();
 		}
-		
-		// Clear through facade
-		engineFacade.clear();
-		
+				
 		// Clear change tracking
 		storageViewer.clearChanges();
-		storageViewer.refresh();
 		
 		execute.setEnabled(false);
 		edit.setEnabled(false);

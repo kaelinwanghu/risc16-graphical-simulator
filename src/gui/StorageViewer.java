@@ -39,6 +39,9 @@ public class StorageViewer extends JPanel {
 	private JComboBox<String> type;
 	private ResizableTable resizableTable;
 	private StorageSettingsDialog settingsDialog;
+
+	private int memoryViewStart = 0;
+    private int memoryViewCount = 512;
 	
 	private EngineFacade engineFacade;
 	private Simulator simulator;
@@ -136,7 +139,7 @@ public class StorageViewer extends JPanel {
 			}
 		});
 		
-		this.settingsDialog = new StorageSettingsDialog(simulator, engineFacade);
+		this.settingsDialog = new StorageSettingsDialog(simulator, this, engineFacade);
 		// Settings button
 		JButton settings = new JButton("Settings");
 		settings.setFocusable(false);
@@ -248,18 +251,32 @@ public class StorageViewer extends JPanel {
 	
 	/**
 	 * Displays memory contents
+	 * 
+	 * @param isHex whether to display in hexadecimal format
 	 */
 	private void displayMemory(boolean isHex) {
 		Memory memory = engineFacade.getMemory();
 		ProgramMetadata metadata = engineFacade.getMetadata();
 		
-		// Determine range to display
-		int maxAddress = Math.min(1024, memory.getSize()); // Show first 512 words (1024 bytes)
-		
 		List<String[]> rows = new ArrayList<>();
 		
-		for (int addr = 0; addr < maxAddress; addr += 2) {
-			if (memory.isValidAddress(addr + 1)) {
+		// Use configured range
+		int startAddr = memoryViewStart;
+		int endAddr = startAddr + (memoryViewCount * 2); // Convert words to bytes
+		
+		// Clamp to valid memory range
+		if (startAddr >= memory.getSize()) {
+			// Start is beyond memory, show from beginning
+			startAddr = 0;
+			endAddr = Math.min(memoryViewCount * 2, memory.getSize());
+		} else {
+			// Clamp end to memory size
+			endAddr = Math.min(endAddr, memory.getSize());
+		}
+		
+		int wordsShown = 0;
+		for (int addr = startAddr; addr < endAddr; addr += 2) {
+			if (memory.isValidAddress(addr) && memory.isValidAddress(addr + 1)) {
 				short value = memory.readWord(addr);
 				
 				String addrStr = " " + formatValue(addr, isHex);
@@ -272,6 +289,7 @@ public class StorageViewer extends JPanel {
 				}
 				
 				rows.add(new String[]{addrStr, valueStr, label});
+				wordsShown++;
 			}
 		}
 		
@@ -279,19 +297,26 @@ public class StorageViewer extends JPanel {
 			rows.toArray(new String[0][]), 
 			new String[]{"Address", "Value", "Label"});
 		
-		// Update info text
+		// Update info text with actual range shown
 		StringBuilder info = new StringBuilder();
-		info.append("Showing first ").append(maxAddress / 2).append(" words\n");
-		info.append("Memory size: ").append(memory.getSize()).append(" bytes\n");
+		info.append("Showing ").append(wordsShown).append(" word(s)\n");
+		
+		if (wordsShown > 0) {
+			info.append("Range: ").append(formatValue(startAddr, isHex));
+			info.append(" - ").append(formatValue(endAddr - 2, isHex)).append("\n");
+		} else {
+			info.append("No data in range\n");
+		}
+		
+		info.append("Memory size: ").append(memory.getSize()).append(" bytes");
 		
 		if (metadata != null) {
-			info.append("Instructions: ").append(metadata.getInstructionCount()).append("\n");
-			info.append("Data words: ").append(metadata.getDataCount());
+			info.append("\nInstructions: ").append(metadata.getInstructionCount());
+			info.append("\nData words: ").append(metadata.getDataCount());
 		}
 		
 		data.setText(info.toString());
-	}
-	
+	}	
 	/**
 	 * Formats a value for display (hex or decimal)
 	 */
@@ -307,6 +332,37 @@ public class StorageViewer extends JPanel {
 	
 	public Dimension getPreferredSize() {
 		return new Dimension(500, super.getPreferredSize().height);
+	}
+
+	public int getMemoryViewStart() {
+		return memoryViewStart;
+	}
+
+	public int getMemoryViewCount() {
+		return memoryViewCount;
+	}
+
+	/**
+	 * Sets the memory view range
+	 * 
+	 * @param startAddress the start address in bytes (must be word-aligned)
+	 * @param wordCount the number of words to display
+	 */
+	public void setMemoryViewRange(int startAddress, int wordCount) {
+		if (startAddress % 2 != 0) {
+			throw new IllegalArgumentException("Start address must be word-aligned");
+		}
+		if (wordCount < 1) {
+			throw new IllegalArgumentException("Word count must be at least 1");
+		}
+		
+		this.memoryViewStart = startAddress;
+		this.memoryViewCount = wordCount;
+		
+		// Refresh display if currently showing memory
+		if (type.getSelectedIndex() == 1) {
+			refresh();
+		}
 	}
 
 	public void setEngineFacade(EngineFacade engineFacade) {

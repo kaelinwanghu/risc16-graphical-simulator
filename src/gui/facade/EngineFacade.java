@@ -37,6 +37,7 @@ public class EngineFacade {
         this.lastAssembly = result;
         
         if (result.isSuccess()) {
+            processor.clear();
             processor.loadProgram(result);
             notifyProgramLoaded(result);
         } else {
