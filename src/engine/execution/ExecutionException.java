@@ -2,7 +2,7 @@ package engine.execution;
 
 /**
  * Exception thrown when instruction execution fails
- * 
+ *   
  * This can occur due to:
  * - Invalid memory access
  * - Arithmetic errors (though RiSC-16 has none)
