@@ -7,6 +7,8 @@ import engine.execution.ExecutionException;
 import engine.execution.ProcessorState;
 import engine.memory.Memory;
 import engine.metadata.ProgramMetadata;
+import engine.execution.ExecutionResult;
+import engine.execution.InstructionExecutor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,16 +53,18 @@ public class EngineFacade {
     
     public void step() throws ExecutionException {
         ProcessorState oldState = processor.getState();
+        InstructionExecutor.ExecutionContext context;
         
         try {
-            processor.step();
+            context = processor.stepWithContext();
         } catch (ExecutionException e) {
             notifyExecutionError(e);
             throw e;
         }
         
         ProcessorState newState = processor.getState();
-        notifyStateChanged(oldState, newState);
+        ExecutionResult result = context.getResult();
+        notifyStateChanged(oldState, newState, result);
         
         if (newState.isHalted()) {
             notifyHalt();
@@ -75,13 +79,13 @@ public class EngineFacade {
     
     public void reset() {
         processor.reset();
-        notifyStateChanged(null, processor.getState());
+        notifyStateChanged(null, processor.getState(), null);
     }
     
     public void clear() {
         processor.clear();
         this.lastAssembly = null;
-        notifyStateChanged(null, processor.getState());
+        notifyStateChanged(null, processor.getState(), null);
     }
     
     // State queries
@@ -138,9 +142,9 @@ public class EngineFacade {
         observers.remove(observer);
     }
     
-    private void notifyStateChanged(ProcessorState oldState, ProcessorState newState) {
+    private void notifyStateChanged(ProcessorState oldState, ProcessorState newState, ExecutionResult result) {
         for (EngineObserver obs : observers) {
-            obs.onStateChanged(oldState, newState);
+            obs.onStateChanged(oldState, newState, result);
         }
     }
     

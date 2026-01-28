@@ -15,18 +15,24 @@ import javax.swing.JTextArea;
 import javax.swing.border.LineBorder;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.DocumentEvent;
+import javax.swing.undo.UndoManager;
 
 @SuppressWarnings("serial")
 public class InputPanel extends JPanel{
 
 	private JTextArea program;
 	private Simulator simulator;
-	
+	private UndoManager undoManager;
+
 	public InputPanel(final Simulator simulator, int programRows, int columns) {
 		super(new BorderLayout());
 		this.simulator = simulator;
 		program = new JTextArea(programRows, columns);
 		program.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 5));
+
+		undoManager = new UndoManager();
+		program.getDocument().addUndoableEditListener(undoManager);
+
 		program.getDocument().addDocumentListener(new DocumentListener()
         {
             @Override
@@ -87,10 +93,31 @@ public class InputPanel extends JPanel{
 	{
 		program.setText(text);
 		program.setCaretPosition(0);
+		undoManager.discardAllEdits();
 	}
 	
 	public void clear() {
 		program.setText("");
 		program.setCaretPosition(0);
+	}
+
+	public void undo() {
+		if (undoManager.canUndo()) {
+			undoManager.undo();
+		}
+	}
+
+	public void redo() {
+		if (undoManager.canRedo()) {
+			undoManager.redo();
+		}
+	}
+
+	public boolean canUndo() {
+		return undoManager.canUndo();
+	}
+
+	public boolean canRedo() {
+		return undoManager.canRedo();
 	}
 }

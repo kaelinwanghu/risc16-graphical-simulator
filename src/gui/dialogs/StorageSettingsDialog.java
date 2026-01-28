@@ -45,14 +45,16 @@ public class StorageSettingsDialog extends JDialog {
 		
 		// Memory size configuration
 		memorySettings = new MemorySettings();
-		memorySettings.setConfiguration(new int[]{1, 1}); // Default: 1 KiB
+		memorySettings.setConfiguration(new int[]{engineFacade.getProcessor().getMemorySize(), 0}); // Default: 1 KiB
 		
 		// Instruction limit configuration
-		instructionLimit = new InputBox("Instruction Limit", 140, 10, "");
-		instructionLimit.setInput(65535); // Default: 65,535
+		instructionLimit = new InputBox("Instruction Limit", 180, 10, "");
+		instructionLimit.setInput(engineFacade.getInstructionLimit()); // Default: 65,535
 
-		memoryViewStart = new InputBox("Memory View Start", 140, 10, "(address)");
-    	memoryViewCount = new InputBox("Memory View Count", 140, 10, "(words)");
+		memoryViewStart = new InputBox("Memory View Start", 180, 10, "(address)");
+		memoryViewStart.setInput(storageViewer.getMemoryViewStart());
+    	memoryViewCount = new InputBox("Memory View Count", 180, 10, "(words)");
+		memoryViewCount.setInput(storageViewer.getMemoryViewCount());
 		
 		JLabel execLabel = new JLabel("Execution Settings");
 		execLabel.setFont(new Font("Consolas", Font.PLAIN, 19));
@@ -78,7 +80,7 @@ public class StorageSettingsDialog extends JDialog {
     	memViewPanel.add(memoryViewStart);
     	memViewPanel.add(memoryViewCount);
 
-		JPanel mainPanel = new JPanel(new GridLayout(1, 3, 20, 0));
+		JPanel mainPanel = new JPanel(new GridLayout(1, 3, 30, 0));
 		mainPanel.add(memorySettings);
 		mainPanel.add(executionPanel);
 		mainPanel.add(memViewPanel);

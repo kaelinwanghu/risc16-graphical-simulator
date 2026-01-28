@@ -3,6 +3,7 @@ package gui.facade;
 import engine.assembly.AssemblyResult;
 import engine.execution.ExecutionException;
 import engine.execution.ProcessorState;
+import engine.execution.ExecutionResult;
 
 /**
  * Observer interface for processor state changes.
@@ -20,8 +21,9 @@ public interface EngineObserver {
      * 
      * @param oldState the state before execution (may be null)
      * @param newState the state after execution
+     * @param result the execution result of the instruction
      */
-    void onStateChanged(ProcessorState oldState, ProcessorState newState);
+    void onStateChanged(ProcessorState oldState, ProcessorState newState, ExecutionResult result);
     
     /**
      * Called when a new program is successfully loaded

@@ -90,6 +90,23 @@ public class Processor {
         
         return !currentState.isHalted();
     }
+
+    /**
+     * Executes a single instruction and returns the full context
+     * 
+     * @return the execution context containing new state and result
+     * @throws ExecutionException if execution fails
+     */
+    public InstructionExecutor.ExecutionContext stepWithContext() throws ExecutionException {
+        if (currentState.isHalted()) {
+            return null;
+        }
+        
+        InstructionExecutor.ExecutionContext context = executionEngine.step(currentState);
+        currentState = context.getNewState();
+        
+        return context;
+    }
     
     /**
      * Executes instructions until halt or error

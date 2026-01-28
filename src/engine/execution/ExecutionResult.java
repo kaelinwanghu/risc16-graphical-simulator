@@ -20,12 +20,14 @@ public final class ExecutionResult {
     private final int memoryAddress;     // -1 if no memory access
     private final boolean branchTaken;
     private final int branchTarget;      // -1 if not a branch/jump
+    private final boolean memoryWritten;
     
     private ExecutionResult(Builder builder) {
         this.destinationReg = builder.destinationReg;
         this.memoryAddress = builder.memoryAddress;
         this.branchTaken = builder.branchTaken;
         this.branchTarget = builder.branchTarget;
+        this.memoryWritten = builder.memoryWritten;
     }
     
     // Getters
@@ -57,6 +59,10 @@ public final class ExecutionResult {
     public boolean isBranchOrJump() {
         return branchTarget != -1;
     }
+
+    public boolean isMemoryWritten() {
+        return memoryWritten;
+    }
     
     // Builder pattern for flexible construction
     
@@ -69,7 +75,8 @@ public final class ExecutionResult {
         private int memoryAddress = -1;
         private boolean branchTaken = false;
         private int branchTarget = -1;
-        
+        private boolean memoryWritten = false;
+
         private Builder(FunctionType functionType) {
             if (functionType == null) {
                 throw new IllegalArgumentException("Function type cannot be null");
@@ -96,6 +103,11 @@ public final class ExecutionResult {
         
         public Builder branchTarget(int target) {
             this.branchTarget = target;
+            return this;
+        }
+
+        public Builder memoryWritten(boolean written) {
+            this.memoryWritten = written;
             return this;
         }
         
@@ -131,7 +143,7 @@ public final class ExecutionResult {
      * Creates a result for STORE operations
      */
     public static ExecutionResult store(int memoryAddress) {
-        return builder(FunctionType.STORE).memoryAddress(memoryAddress).build();
+        return builder(FunctionType.STORE).memoryAddress(memoryAddress).memoryWritten(true).build();
     }
     
     /**
