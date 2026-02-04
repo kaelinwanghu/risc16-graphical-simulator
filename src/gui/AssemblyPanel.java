@@ -69,7 +69,7 @@ public class AssemblyPanel extends JPanel {
 		resizableTable.getTableHeader().setResizingAllowed(false);
 		
 		JScrollPane scrollPane = new JScrollPane(resizableTable);
-		scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+		scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 		scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
 		
 		JLabel l1 = new JLabel("Program");

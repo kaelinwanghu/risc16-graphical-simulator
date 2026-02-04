@@ -202,11 +202,11 @@ public class StorageViewer extends JPanel {
 	 * Called by observer when state changes
 	 */
 	public void updateState(ProcessorState state, ExecutionResult result) {
-		if (!initialLoadedAddresses.isEmpty()) {
+		clearChanges();
+
+		if (result != null) {
 			clearInitialLoadHighlight();
 		}
-		// Clear change tracking for next step
-		clearChanges();
 
 		// Track which registers changed
 		for (int i = 0; i < 8; i++) {
@@ -364,8 +364,13 @@ public class StorageViewer extends JPanel {
 	}
 
 	public Dimension getPreferredSize() {
-		return new Dimension(500, super.getPreferredSize().height);
+		return new Dimension(450, super.getPreferredSize().height);
 	}
+
+	public Dimension getMinimumSize() {
+		return new Dimension(350, 400);
+	}
+
 
 	public int getMemoryViewStart() {
 		return memoryViewStart;

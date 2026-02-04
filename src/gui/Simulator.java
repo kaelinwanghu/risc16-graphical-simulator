@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Arrays;
@@ -15,6 +16,7 @@ import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JSplitPane;
 import javax.swing.UIManager;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -52,7 +54,7 @@ public class Simulator extends JFrame implements EngineObserver {
 	public AssemblyPanel assemblyPanel;
 	public StorageViewer storageViewer;
 
-	public MessageDialog errorDialog;
+	public MessageDialog messageDialog;
 	public InstructionSetDialog instructionSetDialog;
 
 	private FileManager fileManager;
@@ -92,7 +94,7 @@ public class Simulator extends JFrame implements EngineObserver {
 		engineFacade = new EngineFacade(1024);
 		engineFacade.addObserver(this);
 
-		errorDialog = new MessageDialog(this);
+		messageDialog = new MessageDialog(this);
 		instructionSetDialog = new InstructionSetDialog(this);
 		fileManager = new FileManager(this);
 		recentFiles = new RecentFiles();
@@ -145,7 +147,7 @@ public class Simulator extends JFrame implements EngineObserver {
 
 		JButton about = new JButton("About");
 		about.setFocusable(false);
-		about.addActionListener(e -> errorDialog.showAbout());
+		about.addActionListener(e -> messageDialog.showAbout());
 
 		JPanel p1 = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
 		p1.add(assemble);
@@ -167,9 +169,22 @@ public class Simulator extends JFrame implements EngineObserver {
 		main.add(p3, BorderLayout.SOUTH);
 		main.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-		add(main);
-		add(storageViewer, BorderLayout.EAST);
-		setResizable(false);
+		JSplitPane splitPane = new JSplitPane(
+				JSplitPane.HORIZONTAL_SPLIT,
+				main,
+				storageViewer);
+
+		// Set initial divider location (60% to left panel, 40% to right)
+		splitPane.setResizeWeight(0.6);
+
+		// Set divider appearance
+		splitPane.setDividerSize(8);
+		splitPane.setOneTouchExpandable(true); // Adds arrows to quickly collapse panels
+		splitPane.setContinuousLayout(true); // Smooth resizing as you drag
+
+		add(splitPane);
+		setResizable(true);
+		setMinimumSize(new Dimension(900, 600));
 
 		JMenuBar menuBar = new JMenuBar();
 
@@ -214,7 +229,7 @@ public class Simulator extends JFrame implements EngineObserver {
 		helpMenu.setMnemonic('H');
 
 		JMenuItem aboutItem = new JMenuItem("About");
-		aboutItem.addActionListener(e -> errorDialog.showAbout());
+		aboutItem.addActionListener(e -> messageDialog.showAbout());
 		helpMenu.add(aboutItem);
 
 		JMenuItem instructionSetItem = new JMenuItem("Instruction Set");
@@ -264,7 +279,7 @@ public class Simulator extends JFrame implements EngineObserver {
 		storageViewer.clearChanges();
 
 		Set<Integer> loadedAddresses = new HashSet<>();
-		
+
 		// Both instruction and data are written to memory on load
 		for (engine.isa.InstructionFormat instr : result.getInstructions()) {
 			loadedAddresses.add(instr.getAddress());
@@ -272,7 +287,7 @@ public class Simulator extends JFrame implements EngineObserver {
 		for (engine.assembly.AssemblyResult.DataSegment data : result.getDataSegments()) {
 			loadedAddresses.add(data.getAddress());
 		}
-		
+
 		storageViewer.markInitialLoad(loadedAddresses);
 
 		// Update storage viewer
@@ -289,6 +304,8 @@ public class Simulator extends JFrame implements EngineObserver {
 		// Create new assembly panel with result
 		boolean isHex = storageViewer.hex.getText().equals("HEX");
 		assemblyPanel = new AssemblyPanel(result, isHex);
+		ProcessorState initialState = engineFacade.getState();
+		assemblyPanel.highlightInstruction(initialState.getPC());
 		main.add(assemblyPanel);
 		main.validate();
 
@@ -311,7 +328,7 @@ public class Simulator extends JFrame implements EngineObserver {
 			errorMsg.append(error.getFormattedMessage()).append("\n");
 		}
 
-		errorDialog.showError(errorMsg.toString());
+		messageDialog.showError(errorMsg.toString());
 
 		// Ensure processor is cleared
 		engineFacade.clear();
@@ -325,7 +342,7 @@ public class Simulator extends JFrame implements EngineObserver {
 			assemblyPanel.repaint();
 		}
 
-		errorDialog.showError(error.getMessage());
+		messageDialog.showError(error.getMessage());
 
 		// Disable execution buttons
 		execute.setEnabled(false);
@@ -339,17 +356,16 @@ public class Simulator extends JFrame implements EngineObserver {
 		executeStep.setEnabled(false);
 		assemble.setEnabled(true);
 		ProcessorState finalState = engineFacade.getState();
-		javax.swing.JOptionPane.showMessageDialog(
-			this,
-			String.format(
-				"""
-				Program halted.
+		String message = String.format(
+				("""
+				Program halted
 				Instructions executed: %d
-				Final PC: 0x%04X""",
+				Final PC: 0x%04X
+				""").stripTrailing(),
 				finalState.getInstructionCount(),
-				finalState.getPC()),
-			"Program Halted",
-			javax.swing.JOptionPane.INFORMATION_MESSAGE);
+				finalState.getPC());
+
+		messageDialog.showInfo(message);
 	}
 
 	// =================================================================
@@ -371,7 +387,7 @@ public class Simulator extends JFrame implements EngineObserver {
 
 		} catch (Exception ex) {
 			// Unexpected error (shouldn't happen with new assembler)
-			errorDialog.showError("Unexpected assembly error: " + ex.getMessage());
+			messageDialog.showError("Unexpected assembly error: " + ex.getMessage());
 			ex.printStackTrace();
 		}
 	}
@@ -504,11 +520,11 @@ public class Simulator extends JFrame implements EngineObserver {
 	private boolean promptSaveIfNeeded() {
 		String filename = fileManager.getCurrentFileName();
 		int response = JOptionPane.showConfirmDialog(
-			this,
-			"Do you want to save changes to '" + filename + "'?",
-			"Unsaved Changes",
-			JOptionPane.YES_NO_CANCEL_OPTION,
-			JOptionPane.WARNING_MESSAGE);
+				this,
+				"Do you want to save changes to '" + filename + "'?",
+				"Unsaved Changes",
+				JOptionPane.YES_NO_CANCEL_OPTION,
+				JOptionPane.WARNING_MESSAGE);
 
 		if (response == JOptionPane.YES_OPTION) {
 			String content = inputPanel.getProgram();
@@ -601,11 +617,11 @@ public class Simulator extends JFrame implements EngineObserver {
 		if (isModified) {
 			String filename = fileManager.getCurrentFileName();
 			int response = JOptionPane.showConfirmDialog(
-				this,
-				"Do you want to save changes to '" + filename + "'?",
-				"Unsaved Changes",
-				JOptionPane.YES_NO_CANCEL_OPTION,
-				JOptionPane.WARNING_MESSAGE);
+					this,
+					"Do you want to save changes to '" + filename + "'?",
+					"Unsaved Changes",
+					JOptionPane.YES_NO_CANCEL_OPTION,
+					JOptionPane.WARNING_MESSAGE);
 
 			if (response == JOptionPane.YES_OPTION) {
 				String content = inputPanel.getProgram();
@@ -626,8 +642,8 @@ public class Simulator extends JFrame implements EngineObserver {
 	private void setupTextEditingShortcuts() {
 		// Undo (Ctrl+Z)
 		inputPanel.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(
-			KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK),
-			"undo");
+				KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK),
+				"undo");
 		inputPanel.getActionMap().put("undo", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -637,8 +653,8 @@ public class Simulator extends JFrame implements EngineObserver {
 
 		// Redo (Ctrl+Y)
 		inputPanel.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(
-			KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK),
-			"redo");
+				KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK),
+				"redo");
 		inputPanel.getActionMap().put("redo", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -647,6 +663,6 @@ public class Simulator extends JFrame implements EngineObserver {
 		});
 
 		inputPanel.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(
-			KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK), "redo");
+				KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK), "redo");
 	}
 }

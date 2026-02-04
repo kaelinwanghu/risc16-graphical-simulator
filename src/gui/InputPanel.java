@@ -2,6 +2,7 @@ package gui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -29,6 +30,8 @@ public class InputPanel extends JPanel{
 		this.simulator = simulator;
 		program = new JTextArea(programRows, columns);
 		program.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 5));
+
+		program.setMinimumSize(new Dimension(400, 300));
 
 		undoManager = new UndoManager();
 		program.getDocument().addUndoableEditListener(undoManager);

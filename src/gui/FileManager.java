@@ -260,7 +260,7 @@ public class FileManager
 	{
 		if (parent instanceof Simulator)
 		{
-			((Simulator) parent).errorDialog.showError(message);
+			((Simulator) parent).messageDialog.showError(message);
 		}
 	}
 }

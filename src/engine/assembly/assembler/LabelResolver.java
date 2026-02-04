@@ -23,10 +23,11 @@ import java.util.List;
  * - FILL (.fill): value = target address (absolute)
  */
 public final class LabelResolver {
-    
+
     // Prevent instantiation
-    private LabelResolver() {}
-    
+    private LabelResolver() {
+    }
+
     /**
      * Resolves all symbolic labels.
      * 
@@ -36,30 +37,31 @@ public final class LabelResolver {
      */
     public static void resolveAll(AssemblyContext context) {
         List<UnresolvedReference> unresolvedReferences = context.getUnresolvedReferences();
-        
+
         for (UnresolvedReference ref : unresolvedReferences) {
             resolveOne(ref, context);
         }
     }
-    
+
     /**
      * Resolves a single unresolved reference
      * 
-     * @param ref the unresolved reference
+     * @param ref     the unresolved reference
      * @param context the assembly context
      * 
      * @throws AssemblyException if the label is undefined or offset out of range
      */
     private static void resolveOne(UnresolvedReference ref, AssemblyContext context) {
         String label = ref.getLabel();
-        
+
         // Look up label in symbol table
         if (!context.getSymbolTable().contains(label)) {
-            throw new AssemblyException(ref.getLineNumber(), "Undefined label: '" + label + "'", ref.getOriginalLine(), AssemblyError.ErrorType.UNDEFINED_LABEL);
+            throw new AssemblyException(ref.getLineNumber(), "Undefined label: '" + label + "'", ref.getOriginalLine(),
+                    AssemblyError.ErrorType.UNDEFINED_LABEL);
         }
-        
+
         int targetAddress = context.getSymbolTable().resolve(label);
-        
+
         switch (ref.getType()) {
             case BRANCH:
                 resolveBranch(ref, targetAddress, context);
@@ -72,55 +74,69 @@ public final class LabelResolver {
                 break;
         }
     }
-    
+
     /**
      * Resolves a branch instruction (BEQ)
      * 
      * Branch offset is relative to PC+1:
-     *   offset = target - (PC + 2)
+     * offset = target - (PC + 2)
      * Where PC is the address of the BEQ instruction
      * 
      */
     private static void resolveBranch(UnresolvedReference ref, int targetAddress, AssemblyContext context) {
         int pc = ref.getCurrentAddress();
         int offset = targetAddress - (pc + 2);
-        
+
         // Validate offset is in range
         if (!ImmediateRanges.isValidRRI(offset)) {
-            throw new AssemblyException(ref.getLineNumber(), "Branch to label '" + ref.getLabel() + "' out of range (offset: " + offset + ", max: ±63)", ref.getOriginalLine(), AssemblyError.ErrorType.OUT_OF_RANGE);
+            throw new AssemblyException(ref.getLineNumber(),
+                    "Branch to label '" + ref.getLabel() + "' out of range (offset: " + offset + ", max: ±63)",
+                    ref.getOriginalLine(), AssemblyError.ErrorType.OUT_OF_RANGE);
         }
-        
+
         // Update instruction
         InstructionFormat old = context.getInstruction(ref.getInstructionIndex());
-        InstructionFormat updated = InstructionFormat.createRRI(old.getOpcode(), old.getRegA(), old.getRegB(), offset, old.getAddress());
-        
+        InstructionFormat updated = InstructionFormat.createRRI(old.getOpcode(), old.getRegA(), old.getRegB(), offset,
+                old.getAddress());
+
         context.replaceInstruction(ref.getInstructionIndex(), updated);
     }
-    
+
     /**
      * Resolves a load/store instruction (LW/SW)
      * 
      * Load/store offset is relative to PC:
-     *   offset = target - PC
+     * offset = target - PC
      * 
      * Where PC is the address of the LW/SW instruction
      */
     private static void resolveLoadStore(UnresolvedReference ref, int targetAddress, AssemblyContext context) {
         int pc = ref.getCurrentAddress();
-        int offset = targetAddress - pc;
-        
-        // Validate offset is in range
-        if (!ImmediateRanges.isValidRRI(offset)) {
-            throw new AssemblyException(ref.getLineNumber(), "Load/store offset to label '" + ref.getLabel() + "' out of range (offset: " + offset + ", max: ±63)", ref.getOriginalLine(), AssemblyError.ErrorType.OUT_OF_RANGE);
-        }
-        
-        // Update instruction
         InstructionFormat old = context.getInstruction(ref.getInstructionIndex());
-        InstructionFormat updated = InstructionFormat.createRRI(old.getOpcode(), old.getRegA(), old.getRegB(), offset, old.getAddress());
-        
-        context.replaceInstruction(ref.getInstructionIndex(), updated);
+        int regB = old.getRegB();
+        if (regB == 0) {
+            int offset = targetAddress;
+            // Validate offset is in range
+            if (!ImmediateRanges.isValidRRI(offset)) {
+                throw new AssemblyException(
+                        ref.getLineNumber(), "Load/store offset to label '" + ref.getLabel()
+                                + "' out of range (offset: " + offset + ", max: ±63)",
+                        ref.getOriginalLine(), AssemblyError.ErrorType.OUT_OF_RANGE);
+            }
+            // Update instruction
+            InstructionFormat updated = InstructionFormat.createRRI(old.getOpcode(), old.getRegA(), old.getRegB(),
+                    offset, old.getAddress());
+            context.replaceInstruction(ref.getInstructionIndex(), updated);
+
+        } else {
+            // If not r0 - can't resolve at assembly time!
+            throw new AssemblyException(ref.getLineNumber(),
+                    "Cannot use labels with non-zero base register. " +
+                            "Use 'lw rX, r0, label' for absolute addressing, or calculate offset manually.",
+                    ref.getOriginalLine(), AssemblyError.ErrorType.INVALID_OPERAND);
+        }
     }
-    
+
     /**
      * Resolves a .fill directive.
      * 

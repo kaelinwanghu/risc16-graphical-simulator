@@ -131,7 +131,7 @@ public class StorageSettingsDialog extends JDialog {
 		try {
 			config = memorySettings.getConfiguration();
 		} catch (Exception ex) {
-			simulator.errorDialog.showError("Invalid/Missing memory size");
+			simulator.messageDialog.showError("Invalid/Missing memory size");
 			return;
 		}
 		
@@ -140,12 +140,12 @@ public class StorageSettingsDialog extends JDialog {
 		
 		// Validate memory size is a power of 2
 		if ((memorySize & (memorySize - 1)) != 0) {
-			simulator.errorDialog.showError("Memory size must be a power of 2");
+			simulator.messageDialog.showError("Memory size must be a power of 2");
 			return;
 		}
 				
 		if (memorySize < 128 || memorySize > 4 * 1024 * 1024) {
-			simulator.errorDialog.showError("Memory size must be between 128 bytes and 4 MiB");
+			simulator.messageDialog.showError("Memory size must be between 128 bytes and 4 MiB");
 			return;
 		}
 		
@@ -154,11 +154,11 @@ public class StorageSettingsDialog extends JDialog {
 		try {
 			limit = instructionLimit.getValue();
 			if (limit < 1) {
-				simulator.errorDialog.showError("Instruction limit must be at least 1");
+				simulator.messageDialog.showError("Instruction limit must be at least 1");
 				return;
 			}
 		} catch (Exception ex) {
-			simulator.errorDialog.showError("Invalid instruction limit");
+			simulator.messageDialog.showError("Invalid instruction limit");
 			return;
 		}
 
@@ -168,21 +168,21 @@ public class StorageSettingsDialog extends JDialog {
 			viewCount = memoryViewCount.getValue();
 			
 			if (viewStart < 0) {
-				simulator.errorDialog.showError("Memory view start must be non-negative");
+				simulator.messageDialog.showError("Memory view start must be non-negative");
 				return;
 			}
 			
 			if (viewStart % 2 != 0) {
-				simulator.errorDialog.showError("Memory view start must be word-aligned (even address)");
+				simulator.messageDialog.showError("Memory view start must be word-aligned (even address)");
 				return;
 			}
 			
 			if (viewCount < 1 || viewCount > 65535) {
-				simulator.errorDialog.showError("Memory view count must be between 1 and 65,535 words");
+				simulator.messageDialog.showError("Memory view count must be between 1 and 65,535 words");
 				return;
 			}
 		} catch (Exception ex) {
-			simulator.errorDialog.showError("Invalid memory view settings");
+			simulator.messageDialog.showError("Invalid memory view settings");
 			return;
 		}
 		
