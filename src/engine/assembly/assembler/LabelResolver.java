@@ -8,7 +8,7 @@ import java.util.List;
  * Pass 2 - Resolves symbolic labels to concrete offsets/addresses
  * 
  * After Pass 1, we have:
- * - Complete symbol table (all labels → addresses)
+ * - Complete symbol table (all labels -> addresses)
  * - List of unresolved references (symbolic labels in instructions/data)
  * 
  * This pass:

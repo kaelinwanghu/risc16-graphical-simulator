@@ -181,4 +181,8 @@ public class Processor {
     public int getMemorySize() {
         return memory.getSize();
     }
+
+    public void restoreState(ProcessorState state) {
+        this.currentState = state;
+    }
 }

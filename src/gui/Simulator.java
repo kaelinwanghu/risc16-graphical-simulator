@@ -42,6 +42,7 @@ import engine.execution.ExecutionException;
 import engine.execution.ExecutionResult;
 
 import gui.dialogs.MessageDialog;
+import gui.dialogs.SnapshotsDialog;
 import gui.dialogs.InstructionSetDialog;
 
 @SuppressWarnings("serial")
@@ -62,6 +63,7 @@ public class Simulator extends JFrame implements EngineObserver {
 	private RecentFiles recentFiles;
 	private boolean isModified = false;
 	private JMenu fileMenuRef;
+	private SnapshotsDialog snapshotsDialog;
 
 	private JPanel main;
 	private JButton execute;
@@ -96,6 +98,7 @@ public class Simulator extends JFrame implements EngineObserver {
 
 		messageDialog = new MessageDialog(this);
 		instructionSetDialog = new InstructionSetDialog(this);
+		snapshotsDialog = new SnapshotsDialog(this, engineFacade);
 		fileManager = new FileManager(this);
 		recentFiles = new RecentFiles();
 
@@ -103,6 +106,7 @@ public class Simulator extends JFrame implements EngineObserver {
 		setupTextEditingShortcuts();
 		storageViewer = new StorageViewer(this, engineFacade);
 		storageViewer.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+		storageViewer.updateDebugButtonVisibility(engineFacade.getDebugManager().isEnabled());
 
 		autoSaver = new AutoSaver(fileManager, inputPanel, this);
 		autoSaver.start();
@@ -293,7 +297,7 @@ public class Simulator extends JFrame implements EngineObserver {
 		// Update storage viewer
 		storageViewer.refresh();
 
-		// Swap panels: InputPanel → AssemblyPanel
+		// Swap panels: InputPanel -> AssemblyPanel
 		main.remove(inputPanel);
 		try {
 			main.remove(assemblyPanel);
@@ -330,6 +334,10 @@ public class Simulator extends JFrame implements EngineObserver {
 
 		messageDialog.showError(errorMsg.toString());
 
+		if (engineFacade.getDebugManager().isEnabled()) {
+			engineFacade.getDebugManager().clearSnapshots();
+		}
+
 		// Ensure processor is cleared
 		engineFacade.clear();
 	}
@@ -340,6 +348,10 @@ public class Simulator extends JFrame implements EngineObserver {
 		storageViewer.refresh();
 		if (assemblyPanel != null) {
 			assemblyPanel.repaint();
+		}
+
+		if (engineFacade.getDebugManager().isEnabled()) {
+			engineFacade.getDebugManager().clearSnapshots();
 		}
 
 		messageDialog.showError(error.getMessage());
@@ -355,13 +367,18 @@ public class Simulator extends JFrame implements EngineObserver {
 		execute.setEnabled(false);
 		executeStep.setEnabled(false);
 		assemble.setEnabled(true);
+
+		if (engineFacade.getDebugManager().isEnabled()) {
+			engineFacade.getDebugManager().clearSnapshots();
+		}
+
 		ProcessorState finalState = engineFacade.getState();
 		String message = String.format(
 				("""
-				Program halted
-				Instructions executed: %d
-				Final PC: 0x%04X
-				""").stripTrailing(),
+						Program halted
+						Instructions executed: %d
+						Final PC: 0x%04X
+						""").stripTrailing(),
 				finalState.getInstructionCount(),
 				finalState.getPC());
 
@@ -420,6 +437,10 @@ public class Simulator extends JFrame implements EngineObserver {
 	public void edit(boolean clear) {
 		if (clear) {
 			inputPanel.clear();
+		}
+
+		if (engineFacade.getDebugManager().isEnabled()) {
+			engineFacade.getDebugManager().clearSnapshots();
 		}
 
 		// Clear change tracking
@@ -664,5 +685,40 @@ public class Simulator extends JFrame implements EngineObserver {
 
 		inputPanel.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(
 				KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK), "redo");
+	}
+
+	/**
+	 * Updates debug menu visibility based on debugging enabled state
+	 */
+	public void updateDebugVisibility() {
+		boolean debugEnabled = engineFacade.getDebugManager().isEnabled();
+		storageViewer.updateDebugButtonVisibility(debugEnabled);
+	}
+
+	/**
+	 * Shows the snapshots dialog
+	 */
+	public void showSnapshotsDialog() {
+		snapshotsDialog.showDialog();
+	}
+
+	/**
+	 * Checks if snapshot restoration is currently allowed
+	 * 
+	 * @return true if a program is loaded and not halted
+	 */
+	public boolean isSnapshotRestorationAllowed() {
+		// Must have a loaded program
+		if (engineFacade.getLastAssembly() == null || !engineFacade.getLastAssembly().isSuccess()) {
+			return false;
+		}
+
+		// Must not be halted
+		if (engineFacade.isHalted()) {
+			return false;
+		}
+
+		// Must not be in edit mode (execute buttons should be enabled)
+		return execute.isEnabled() || executeStep.isEnabled();
 	}
 }

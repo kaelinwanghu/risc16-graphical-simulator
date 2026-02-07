@@ -13,7 +13,7 @@ import java.util.List;
  *   2. Pseudo-instruction expansion (PseudoInstructionExpander)
  * 
  * PASS 1 (InitialParser):
- *   3. Build symbol table (labels → addresses)
+ *   3. Build symbol table (labels -> addresses)
  *   4. Parse instructions and directives
  *   5. Track unresolved symbolic references
  * 

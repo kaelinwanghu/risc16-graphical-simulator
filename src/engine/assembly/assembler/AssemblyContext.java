@@ -117,7 +117,9 @@ class UnresolvedReference {
     enum Type {
         BRANCH,      // BEQ: offset = target - (PC + 2)
         LOAD_STORE,  // LW/SW: offset = target - PC
-        FILL         // .fill: value = target address
+        FILL,         // .fill: value = target address
+        MOVI_UPPER,   // movi lui part
+        MOVEI_LOWER,  // movi add part
     }
     
     private final Type type;

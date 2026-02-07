@@ -28,7 +28,9 @@ import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.border.LineBorder;
@@ -42,6 +44,7 @@ public class StorageViewer extends JPanel {
 	private JComboBox<String> type;
 	private ResizableTable resizableTable;
 	private StorageSettingsDialog settingsDialog;
+	private JButton debugButton;
 
 	private int memoryViewStart = 0;
 	private int memoryViewCount = 512;
@@ -160,9 +163,22 @@ public class StorageViewer extends JPanel {
 		// Settings button
 		JButton settings = new JButton("Settings");
 		settings.setFocusable(false);
-		settings.addActionListener(e -> {
-			settingsDialog.setVisible(true);
+		
+
+		JButton debuggerButton = new JButton("Debug");
+		debuggerButton.setFocusable(false);
+		debuggerButton.setVisible(false);
+		JPopupMenu debugMenu = new JPopupMenu();
+		JMenuItem snapshotsItem = new JMenuItem("View Snapshots...");
+		snapshotsItem.addActionListener(e -> simulator.showSnapshotsDialog());
+		debugMenu.add(snapshotsItem);
+		debuggerButton.addActionListener(e -> {
+			debugMenu.show(debuggerButton, 0, debuggerButton.getHeight());
 		});
+
+		// Store reference to update visibility
+		this.debugButton = debuggerButton;
+		settings.addActionListener(e -> settingsDialog.setVisible(true));
 
 		// Info text area
 		data = new JTextArea(3, 10);
@@ -173,9 +189,9 @@ public class StorageViewer extends JPanel {
 		data.setDisabledTextColor(new Color(100, 100, 100));
 
 		// Layout
-		JPanel p1 = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+		JPanel p1 = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
+		p1.add(debugButton);
 		p1.add(settings);
-		p1.add(Box.createRigidArea(new Dimension(5, 0)));
 		p1.add(hex);
 
 		JPanel typePanel = new JPanel(new BorderLayout(0, 10));
@@ -371,7 +387,6 @@ public class StorageViewer extends JPanel {
 		return new Dimension(350, 400);
 	}
 
-
 	public int getMemoryViewStart() {
 		return memoryViewStart;
 	}
@@ -429,5 +444,14 @@ public class StorageViewer extends JPanel {
 	 */
 	public void clearInitialLoadHighlight() {
 		initialLoadedAddresses.clear();
+	}
+
+	/**
+	 * Updates debug button visibility based on debug state
+	 */
+	public void updateDebugButtonVisibility(boolean debugEnabled) {
+		if (debugButton != null) {
+			debugButton.setVisible(debugEnabled);
+		}
 	}
 }
