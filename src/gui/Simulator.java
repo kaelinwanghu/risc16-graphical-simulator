@@ -104,6 +104,25 @@ public class Simulator extends JFrame implements EngineObserver {
 
 		inputPanel = new InputPanel(this, 25, 35);
 		setupTextEditingShortcuts();
+		inputPanel.getLineNumberedTextArea().setBreakpointListener((lineNumber, isSet) -> {
+			if (!engineFacade.getDebugManager().isEnabled()) {
+				// Show message that debugging must be enabled
+				JOptionPane.showMessageDialog(
+						this,
+						"Enable debugging in Settings to use breakpoints.",
+						"Debugging Disabled",
+						JOptionPane.INFORMATION_MESSAGE);
+				// Remove the breakpoint from UI
+				inputPanel.getLineNumberedTextArea().setBreakpoint(lineNumber, false);
+				return;
+			}
+
+			if (isSet) {
+				engineFacade.getDebugManager().setBreakpoint(lineNumber);
+			} else {
+				engineFacade.getDebugManager().removeBreakpoint(lineNumber);
+			}
+		});
 		storageViewer = new StorageViewer(this, engineFacade);
 		storageViewer.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 		storageViewer.updateDebugButtonVisibility(engineFacade.getDebugManager().isEnabled());

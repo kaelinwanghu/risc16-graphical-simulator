@@ -4,7 +4,9 @@ import engine.execution.ProcessorState;
 import engine.memory.Memory;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Manages debugging features including snapshots, breakpoints, and watchpoints
@@ -15,11 +17,13 @@ public class DebugManager {
     private final List<ExecutionSnapshot> snapshots;
     private int snapshotLimit;
     private boolean enabled;
+    private final Set<Integer> breakpoints; // Line numbers with breakpoints
 
     public DebugManager() {
         this.snapshots = new ArrayList<>();
         this.snapshotLimit = 100; // Default limit
         this.enabled = false;
+        this.breakpoints = new HashSet<>();
     }
 
     // ===== Configuration =====
@@ -135,9 +139,41 @@ public class DebugManager {
         snapshots.remove(index);
     }
 
-    // TODO: Add breakpoint management here
+    /**
+     * Sets a breakpoint at a source line number
+     */
+    public void setBreakpoint(int lineNumber) {
+        if (!enabled) {
+            return;
+        }
+        breakpoints.add(lineNumber);
+    }
 
-    // TODO: Add watchpoint (memory/register watch) management here
+    /**
+     * Removes a breakpoint at a source line number
+     */
+    public void removeBreakpoint(int lineNumber) {
+        breakpoints.remove(lineNumber);
+    }
 
-    // TODO: Add memory editing validation/tracking here
+    /**
+     * Checks if a breakpoint exists at a line number
+     */
+    public boolean hasBreakpoint(int lineNumber) {
+        return breakpoints.contains(lineNumber);
+    }
+
+    /**
+     * Gets all breakpoint line numbers
+     */
+    public Set<Integer> getBreakpoints() {
+        return Collections.unmodifiableSet(breakpoints);
+    }
+
+    /**
+     * Clears all breakpoints
+     */
+    public void clearBreakpoints() {
+        breakpoints.clear();
+    }
 }
