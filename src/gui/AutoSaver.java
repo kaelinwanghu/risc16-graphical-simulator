@@ -67,7 +67,7 @@ public class AutoSaver
 			String content = inputPanel.getProgram();
 			fileManager.autoSave(content);
 			simulator.setModified(false);
-			System.out.println("Auto-saved at " + new java.util.Date());
+			// System.out.println("Auto-saved at " + new java.util.Date());
 		}
 		catch (Exception e)
 		{

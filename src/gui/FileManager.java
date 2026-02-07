@@ -175,8 +175,7 @@ public class FileManager
 		}
 		catch (IOException e)
 		{
-			// Silent fail for auto-save - don't interrupt user
-			System.out.println("Auto-save failed: " + e.getMessage());
+			// System.out.println("Auto-save failed: " + e.getMessage());
 		}
 	}	
 	/**
