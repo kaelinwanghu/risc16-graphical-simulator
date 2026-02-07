@@ -72,6 +72,12 @@ public final class LabelResolver {
             case FILL:
                 resolveFill(ref, targetAddress, context);
                 break;
+            case MOVI_UPPER:
+                resolveMoviUpper(ref, targetAddress, context);
+                break;
+            case MOVI_LOWER:
+                resolveMoviLower(ref, targetAddress, context);
+                break;
         }
     }
 
@@ -146,4 +152,32 @@ public final class LabelResolver {
         // No range check - addresses are 16-bit so always fit
         context.replaceDataSegment(ref.getDataIndex(), (short) targetAddress);
     }
+
+    private static void resolveMoviLower(UnresolvedReference ref, int targetAddress, AssemblyContext context) {
+        int lower6 = targetAddress & 0x3F;
+
+        // Update ADDI instruction
+        InstructionFormat old = context.getInstruction(ref.getInstructionIndex());
+        InstructionFormat updated = InstructionFormat.createRRI(old.getOpcode(), old.getRegA(), old.getRegB(), lower6,
+                old.getAddress());
+        context.replaceInstruction(ref.getInstructionIndex(), updated);
+    }
+
+    private static void resolveMoviUpper(UnresolvedReference ref, int targetAddress, AssemblyContext context) {
+        int upper10 = (targetAddress >> 6) & 0x3FF;
+
+        // Validate range (should always fit in 10 bits for 16-bit addresses)
+        if (!ImmediateRanges.isValidRI(upper10)) {
+            throw new AssemblyException(ref.getLineNumber(),
+                    "Label '" + ref.getLabel() + "' address " + targetAddress + " too large for MOVI",
+                    ref.getOriginalLine(), AssemblyError.ErrorType.OUT_OF_RANGE);
+        }
+
+        // Update LUI instruction
+        InstructionFormat old = context.getInstruction(ref.getInstructionIndex());
+        InstructionFormat updated = InstructionFormat.createRI(old.getOpcode(), old.getRegA(), upper10,
+                old.getAddress());
+        context.replaceInstruction(ref.getInstructionIndex(), updated);
+    }
+
 }

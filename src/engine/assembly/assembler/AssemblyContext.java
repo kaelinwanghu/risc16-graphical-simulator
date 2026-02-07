@@ -119,7 +119,7 @@ class UnresolvedReference {
         LOAD_STORE,  // LW/SW: offset = target - PC
         FILL,         // .fill: value = target address
         MOVI_UPPER,   // movi lui part
-        MOVEI_LOWER,  // movi add part
+        MOVI_LOWER,   // movi add part
     }
     
     private final Type type;
