@@ -255,4 +255,33 @@ public class EngineFacade {
 
         return debugManager.shouldBreak(sourceLine, state, processor.getMemory());
     }
+
+    /**
+     * Manually sets a register value (for debugging)
+     * 
+     * @param regNum the register number (0-7)
+     * @param value  the new value
+     * @throws IllegalArgumentException if register number is invalid
+     */
+    public void setRegister(int regNum, short value) {
+        if (regNum < 0 || regNum > 7) {
+            throw new IllegalArgumentException("Register must be 0-7, got: " + regNum);
+        }
+
+        if (!debugManager.isEnabled()) {
+            throw new IllegalStateException("Cannot manually edit registers when debugging is disabled");
+        }
+
+        ProcessorState oldState = processor.getState();
+
+        // Create new state with updated register
+        ProcessorState newState = processor.getState().toBuilder()
+                .setRegister(regNum, value)
+                .build();
+
+        // Update processor state
+        processor.restoreState(newState);
+
+        notifyStateChanged(oldState, newState, null); // NULL = manual edit
+    }
 }

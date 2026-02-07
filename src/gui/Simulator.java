@@ -378,6 +378,8 @@ public class Simulator extends JFrame implements EngineObserver {
 			engineFacade.getDebugManager().clearSnapshots();
 		}
 
+		storageViewer.clearEditTracking();
+
 		messageDialog.showError(error.getMessage());
 
 		// Disable execution buttons
@@ -396,6 +398,8 @@ public class Simulator extends JFrame implements EngineObserver {
 			engineFacade.getDebugManager().clearSnapshots();
 		}
 
+		storageViewer.clearEditTracking();
+
 		ProcessorState finalState = engineFacade.getState();
 		String message = String.format(
 				("""
@@ -408,7 +412,6 @@ public class Simulator extends JFrame implements EngineObserver {
 
 		messageDialog.showInfo(message);
 	}
-
 
 	private void assembleProgram() {
 		try {
@@ -495,6 +498,7 @@ public class Simulator extends JFrame implements EngineObserver {
 
 		// Clear change tracking
 		storageViewer.clearChanges();
+		storageViewer.clearEditTracking();
 		storageViewer.clearInitialLoadHighlight();
 
 		execute.setEnabled(false);

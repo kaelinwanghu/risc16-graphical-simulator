@@ -87,10 +87,15 @@ public class StorageSettingsDialog extends JDialog {
 		Border b4 = BorderFactory.createTitledBorder(null, "Debugging", TitledBorder.LEFT, TitledBorder.TOP,
 				new Font("Consolas", Font.PLAIN, 19), Color.RED);
 
+		JLabel editHintLabel = new JLabel("<html><i>Tip: Double-click register/memory to edit</i></html>");
+		editHintLabel.setFont(new Font("Consolas", Font.PLAIN, 12));
+		editHintLabel.setForeground(new Color(100, 100, 100));
+
 		JPanel debugPanel = new JPanel(new GridLayout(3, 1, 0, 5));
 		debugPanel.setBorder(BorderFactory.createCompoundBorder(b4, BorderFactory.createEmptyBorder(5, 0, 5, 0)));
 		debugPanel.add(checkboxPanel);
 		debugPanel.add(snapshotLimit);
+		debugPanel.add(editHintLabel);
 
 		JPanel mainPanel = new JPanel(new GridLayout(2, 2, 20, 20));
 		mainPanel.add(memorySettings);

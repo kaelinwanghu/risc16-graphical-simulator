@@ -3,6 +3,7 @@ package gui;
 import gui.components.ResizableTable;
 import gui.facade.EngineFacade;
 import gui.dialogs.StorageSettingsDialog;
+import gui.dialogs.ValueEditorDialog;
 import engine.execution.ProcessorState;
 import engine.memory.Memory;
 import engine.metadata.ProgramMetadata;
@@ -16,6 +17,8 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -29,6 +32,7 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
@@ -58,12 +62,17 @@ public class StorageViewer extends JPanel {
 	private Set<Integer> changedMemoryAddresses = new HashSet<>();
 	private Map<Integer, Short> lastMemoryValues = new HashMap<>();
 	private Set<Integer> initialLoadedAddresses = new HashSet<>();
+	private Set<Integer> editedRegisters = new HashSet<>();
+	private Set<Integer> editedMemoryAddresses = new HashSet<>();
+	private ValueEditorDialog valueEditorDialog;
 
 	public StorageViewer(final Simulator simulator, EngineFacade engineFacade) {
 		super(new BorderLayout(0, 10));
 
 		this.simulator = simulator;
 		this.engineFacade = engineFacade;
+
+		this.valueEditorDialog = new ValueEditorDialog(simulator);
 
 		// Initialize last values
 		for (int i = 0; i < 8; i++) {
@@ -86,6 +95,10 @@ public class StorageViewer extends JPanel {
 				// Check if this row should be highlighted
 				if (type.getSelectedIndex() == 0) {
 					// Registers view
+					if (editedRegisters.contains(rowIndex)) {
+						shouldHighlight = true;
+						highlightColor = new Color(255, 200, 200); // Light red for manual edits
+					}
 					if (rowIndex == 0 && lastRegisterValues[0] != 0) {
 						// R0 attempted write (special case - yellow)
 						shouldHighlight = true;
@@ -99,6 +112,10 @@ public class StorageViewer extends JPanel {
 					int startAddr = memoryViewStart;
 					int address = startAddr + (rowIndex * 2); // Each row is one word (2 bytes)
 
+					if (editedMemoryAddresses.contains(address)) {
+						shouldHighlight = true;
+						highlightColor = new Color(255, 200, 200); // Light red for manual edits
+					}
 					// Check if this address was just written to (green)
 					if (changedMemoryAddresses.contains(address)) {
 						shouldHighlight = true;
@@ -128,6 +145,15 @@ public class StorageViewer extends JPanel {
 				return c;
 			}
 		};
+
+		resizableTable.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				if (e.getClickCount() == 2) { // Double-click
+					handleDoubleClick(e);
+				}
+			}
+		});
 
 		resizableTable.setRowHeight(20);
 		resizableTable.setIntercellSpacing(new Dimension(0, 1));
@@ -218,32 +244,46 @@ public class StorageViewer extends JPanel {
 	/**
 	 * Updates the display based on new processor state
 	 * Called by observer when state changes
+	 * 
+	 * @param state  the new processor state
+	 * @param result the execution result (null if manual edit)
 	 */
 	public void updateState(ProcessorState state, ExecutionResult result) {
-		clearChanges();
-
+		// Only clear highlights if this is from instruction execution (not manual edit)
 		if (result != null) {
-			clearInitialLoadHighlight();
-		}
-
-		// Track which registers changed
-		for (int i = 0; i < 8; i++) {
-			short currentValue = state.getRegister(i);
-			if (currentValue != lastRegisterValues[i]) {
-				changedRegisters.add(i);
-				lastRegisterValues[i] = currentValue;
+			// Clear initial load highlighting after first step
+			if (!initialLoadedAddresses.isEmpty()) {
+				clearInitialLoadHighlight();
 			}
-		}
 
-		if (result != null && result.isMemoryWritten() && result.hasMemoryAccess()) {
-			int address = result.getMemoryAddress();
-			changedMemoryAddresses.add(address);
+			// Clear change tracking for next step
+			clearChanges();
 
-			// Store current value for future comparisons
-			Memory memory = engineFacade.getMemory();
-			if (memory.isValidAddress(address) && memory.isValidAddress(address + 1)) {
-				short value = memory.readWord(address);
-				lastMemoryValues.put(address, value);
+			// Track which registers changed
+			for (int i = 0; i < 8; i++) {
+				short currentValue = state.getRegister(i);
+				if (currentValue != lastRegisterValues[i]) {
+					changedRegisters.add(i);
+					lastRegisterValues[i] = currentValue;
+				}
+			}
+
+			// Track memory changes
+			if (result.isMemoryWritten() && result.hasMemoryAccess()) {
+				int address = result.getMemoryAddress();
+				changedMemoryAddresses.add(address);
+
+				// Store current value for future comparisons
+				Memory memory = engineFacade.getMemory();
+				if (memory.isValidAddress(address) && memory.isValidAddress(address + 1)) {
+					short value = memory.readWord(address);
+					lastMemoryValues.put(address, value);
+				}
+			}
+		} else {
+			// Manual edit - just update last values without clearing highlights
+			for (int i = 0; i < 8; i++) {
+				lastRegisterValues[i] = state.getRegister(i);
 			}
 		}
 
@@ -455,5 +495,128 @@ public class StorageViewer extends JPanel {
 		if (debugButton != null) {
 			debugButton.setVisible(debugEnabled);
 		}
+	}
+
+	/**
+	 * Handles double-click on register or memory cell for editing
+	 */
+	private void handleDoubleClick(MouseEvent e) {
+		// Check if debugging is enabled
+		if (!engineFacade.getDebugManager().isEnabled()) {
+			JOptionPane.showMessageDialog(
+					this,
+					"Enable debugging in Settings to edit values.",
+					"Debugging Disabled",
+					JOptionPane.INFORMATION_MESSAGE);
+			return;
+		}
+
+		// Check if a program is loaded and running
+		if (engineFacade.getLastAssembly() == null || !engineFacade.getLastAssembly().isSuccess()) {
+			JOptionPane.showMessageDialog(
+					this,
+					"Load a program first before editing values.",
+					"No Program Loaded",
+					JOptionPane.INFORMATION_MESSAGE);
+			return;
+		}
+
+		if (engineFacade.isHalted()) {
+			JOptionPane.showMessageDialog(
+					this,
+					"Cannot edit values after program has halted.\nRestart the program to edit values.",
+					"Program Halted",
+					JOptionPane.INFORMATION_MESSAGE);
+			return;
+		}
+
+		int row = resizableTable.rowAtPoint(e.getPoint());
+		int col = resizableTable.columnAtPoint(e.getPoint());
+
+		if (row == -1 || col != 1) { // Only "Value" column is editable (column 1)
+			return;
+		}
+
+		if (type.getSelectedIndex() == 0) {
+			// Registers view
+			editRegister(row);
+		} else if (type.getSelectedIndex() == 1) {
+			// Memory view
+			editMemory(row);
+		}
+	}
+
+	/**
+	 * Edits a register value
+	 */
+	private void editRegister(int regNum) {
+		if (regNum == 0) {
+			JOptionPane.showMessageDialog(
+					this,
+					"R0 is read-only and always returns 0. Cannot edit R0.",
+					"Invalid Edit",
+					JOptionPane.WARNING_MESSAGE);
+			return;
+		}
+		ProcessorState state = engineFacade.getState();
+		short currentValue = state.getRegister(regNum);
+
+		Integer newValue = valueEditorDialog.editRegister(regNum, currentValue);
+
+		if (newValue != null) {
+			// Apply the new value
+			try {
+				engineFacade.setRegister(regNum, (short) newValue.intValue());
+				editedRegisters.add(regNum);
+				refresh();
+			} catch (Exception ex) {
+				JOptionPane.showMessageDialog(
+						this,
+						"Failed to set register: " + ex.getMessage(),
+						"Error",
+						JOptionPane.ERROR_MESSAGE);
+			}
+		}
+	}
+
+	/**
+	 * Edits a memory word
+	 */
+	private void editMemory(int rowIndex) {
+		int startAddr = memoryViewStart;
+		int address = startAddr + (rowIndex * 2); // Each row is one word (2 bytes)
+
+		Memory memory = engineFacade.getMemory();
+
+		if (!memory.isValidAddress(address) || !memory.isValidAddress(address + 1)) {
+			return;
+		}
+
+		short currentValue = memory.readWord(address);
+
+		Integer newValue = valueEditorDialog.editMemory(address, currentValue);
+
+		if (newValue != null) {
+			// Apply the new value
+			try {
+				memory.writeWord(address, (short) newValue.intValue());
+				editedMemoryAddresses.add(address);
+				refresh();
+			} catch (Exception ex) {
+				JOptionPane.showMessageDialog(
+						this,
+						"Failed to set memory: " + ex.getMessage(),
+						"Error",
+						JOptionPane.ERROR_MESSAGE);
+			}
+		}
+	}
+
+	/**
+	 * Clears manual edit tracking
+	 */
+	public void clearEditTracking() {
+		editedRegisters.clear();
+		editedMemoryAddresses.clear();
 	}
 }
