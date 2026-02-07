@@ -553,7 +553,7 @@ public class StorageViewer extends JPanel {
 		if (regNum == 0) {
 			JOptionPane.showMessageDialog(
 					this,
-					"R0 is read-only and always returns 0. Cannot edit R0.",
+					"R0 cannot be edited: is read-only and always returns 0.",
 					"Invalid Edit",
 					JOptionPane.WARNING_MESSAGE);
 			return;
