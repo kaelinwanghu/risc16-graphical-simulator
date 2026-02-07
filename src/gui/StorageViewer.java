@@ -163,7 +163,6 @@ public class StorageViewer extends JPanel {
 		// Settings button
 		JButton settings = new JButton("Settings");
 		settings.setFocusable(false);
-		
 
 		JButton debuggerButton = new JButton("Debug");
 		debuggerButton.setFocusable(false);
@@ -172,6 +171,9 @@ public class StorageViewer extends JPanel {
 		JMenuItem snapshotsItem = new JMenuItem("View Snapshots...");
 		snapshotsItem.addActionListener(e -> simulator.showSnapshotsDialog());
 		debugMenu.add(snapshotsItem);
+		JMenuItem breakpointsItem = new JMenuItem("Manage Breakpoints...");
+		breakpointsItem.addActionListener(e -> simulator.showBreakpointsDialog());
+		debugMenu.add(breakpointsItem);
 		debuggerButton.addActionListener(e -> {
 			debugMenu.show(debuggerButton, 0, debuggerButton.getHeight());
 		});

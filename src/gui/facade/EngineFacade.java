@@ -2,6 +2,8 @@ package gui.facade;
 
 import engine.Processor;
 import engine.assembly.assembler.Assembler;
+import engine.debug.Breakpoint;
+import engine.debug.BreakpointException;
 import engine.debug.DebugManager;
 import engine.debug.ExecutionSnapshot;
 import engine.assembly.AssemblyResult;
@@ -56,7 +58,7 @@ public class EngineFacade {
 
     // Execution
 
-    public void step() throws ExecutionException {
+    public void step() throws ExecutionException, BreakpointException {
         ProcessorState oldState = processor.getState();
         if (debugManager.isEnabled()) {
             String description = String.format("Before instruction at 0x%04X", oldState.getPC());
@@ -74,6 +76,17 @@ public class EngineFacade {
 
         ProcessorState newState = processor.getState();
         ExecutionResult result = context.getResult();
+
+        if (shouldBreakAtCurrentState(newState)) {
+            int sourceLine = addressToSourceLine(newState.getPC());
+            Breakpoint bp = debugManager.getBreakpoint(sourceLine);
+
+            // Notify observers BEFORE throwing
+            notifyStateChanged(oldState, newState, result);
+
+            // Throw exception to stop execution
+            throw new BreakpointException(newState, sourceLine, bp);
+        }
         notifyStateChanged(oldState, newState, result);
 
         if (newState.isHalted()) {
@@ -81,7 +94,7 @@ public class EngineFacade {
         }
     }
 
-    public void run() throws ExecutionException {
+    public void run() throws ExecutionException, BreakpointException {
         while (!processor.isHalted()) {
             step();
         }
@@ -214,5 +227,32 @@ public class EngineFacade {
 
         // Notify observers
         notifyStateChanged(null, processor.getState(), null);
+    }
+
+    /**
+     * Maps a PC address to a source line number
+     * Returns -1 if no mapping exists
+     */
+    private int addressToSourceLine(int address) {
+        if (lastAssembly == null) {
+            return -1;
+        }
+        return processor.getMetadata().getSourceLine(address);
+    }
+
+    /**
+     * Checks if execution should break at current state
+     */
+    private boolean shouldBreakAtCurrentState(ProcessorState state) {
+        if (!debugManager.isEnabled()) {
+            return false;
+        }
+
+        int sourceLine = addressToSourceLine(state.getPC());
+        if (sourceLine == -1) {
+            return false;
+        }
+
+        return debugManager.shouldBreak(sourceLine, state, processor.getMemory());
     }
 }

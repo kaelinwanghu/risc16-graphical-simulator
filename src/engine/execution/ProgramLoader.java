@@ -61,11 +61,11 @@ public class ProgramLoader {
             int address = instruction.getAddress();
             
             short binary = InstructionEncoder.encode(instruction);
-
             memory.writeWord(address, binary);
             
             // Mark as instruction in metadata
             metadataBuilder.markInstruction(address);
+            metadataBuilder.setSourceLine(address, instruction.getSourceLine());
         }
         
         // Load data segments, then write to memory

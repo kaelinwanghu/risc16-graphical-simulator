@@ -4,8 +4,10 @@ import engine.execution.ProcessorState;
 import engine.memory.Memory;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -15,15 +17,15 @@ import java.util.Set;
  */
 public class DebugManager {
     private final List<ExecutionSnapshot> snapshots;
+    private final Map<Integer, Breakpoint> breakpoints;
     private int snapshotLimit;
     private boolean enabled;
-    private final Set<Integer> breakpoints; // Line numbers with breakpoints
 
     public DebugManager() {
         this.snapshots = new ArrayList<>();
         this.snapshotLimit = 100; // Default limit
         this.enabled = false;
-        this.breakpoints = new HashSet<>();
+        this.breakpoints = new HashMap<>();
     }
 
     // ===== Configuration =====
@@ -32,6 +34,7 @@ public class DebugManager {
         this.enabled = enabled;
         if (!enabled) {
             clearSnapshots();
+            clearBreakpoints();
         }
     }
 
@@ -139,18 +142,31 @@ public class DebugManager {
         snapshots.remove(index);
     }
 
+    // ===== Breakpoint Management =====
+
     /**
-     * Sets a breakpoint at a source line number
+     * Sets an unconditional breakpoint at a line number
      */
     public void setBreakpoint(int lineNumber) {
         if (!enabled) {
             return;
         }
-        breakpoints.add(lineNumber);
+        breakpoints.put(lineNumber, new Breakpoint(lineNumber));
     }
 
     /**
-     * Removes a breakpoint at a source line number
+     * Sets a conditional breakpoint
+     */
+    public void setConditionalBreakpoint(int lineNumber, Breakpoint.WatchType watchType,
+            int watchTarget, Breakpoint.Operator operator, int compareValue) {
+        if (!enabled) {
+            return;
+        }
+        breakpoints.put(lineNumber, new Breakpoint(lineNumber, watchType, watchTarget, operator, compareValue));
+    }
+
+    /**
+     * Removes a breakpoint at a line number
      */
     public void removeBreakpoint(int lineNumber) {
         breakpoints.remove(lineNumber);
@@ -160,14 +176,28 @@ public class DebugManager {
      * Checks if a breakpoint exists at a line number
      */
     public boolean hasBreakpoint(int lineNumber) {
-        return breakpoints.contains(lineNumber);
+        return breakpoints.containsKey(lineNumber);
+    }
+
+    /**
+     * Gets a specific breakpoint
+     */
+    public Breakpoint getBreakpoint(int lineNumber) {
+        return breakpoints.get(lineNumber);
     }
 
     /**
      * Gets all breakpoint line numbers
      */
-    public Set<Integer> getBreakpoints() {
-        return Collections.unmodifiableSet(breakpoints);
+    public Set<Integer> getBreakpointLines() {
+        return Collections.unmodifiableSet(breakpoints.keySet());
+    }
+
+    /**
+     * Gets all breakpoints
+     */
+    public List<Breakpoint> getAllBreakpoints() {
+        return new ArrayList<>(breakpoints.values());
     }
 
     /**
@@ -175,5 +205,98 @@ public class DebugManager {
      */
     public void clearBreakpoints() {
         breakpoints.clear();
+    }
+
+    /**
+     * Enables or disables a specific breakpoint
+     */
+    public void setBreakpointEnabled(int lineNumber, boolean enabled) {
+        Breakpoint bp = breakpoints.get(lineNumber);
+        if (bp != null) {
+            bp.setEnabled(enabled);
+        }
+    }
+
+    /**
+     * Checks if execution should break at current state
+     * 
+     * @param lineNumber the current source line being executed
+     * @param state      the current processor state
+     * @param memory     the current memory state
+     * @return true if a breakpoint condition is met
+     */
+    public boolean shouldBreak(int lineNumber, ProcessorState state, Memory memory) {
+        if (!enabled) {
+            return false;
+        }
+
+        Breakpoint bp = breakpoints.get(lineNumber);
+        if (bp == null || !bp.isEnabled()) {
+            return false;
+        }
+
+        // Unconditional breakpoint - always break
+        if (!bp.isConditional()) {
+            return true;
+        }
+
+        // Conditional breakpoint - evaluate condition
+        return evaluateCondition(bp, state, memory);
+    }
+
+    /**
+     * Evaluates a breakpoint condition
+     */
+    private boolean evaluateCondition(Breakpoint bp, ProcessorState state, Memory memory) {
+        int actualValue;
+
+        // Get the watched value
+        switch (bp.getWatchType()) {
+            case REGISTER:
+                if (bp.getWatchTarget() < 0 || bp.getWatchTarget() > 7) {
+                    return false; // Invalid register
+                }
+                actualValue = state.getRegister(bp.getWatchTarget()) & 0xFFFF;
+                break;
+
+            case MEMORY:
+                try {
+                    actualValue = memory.readWord(bp.getWatchTarget()) & 0xFFFF;
+                } catch (Exception e) {
+                    return false; // Invalid address
+                }
+                break;
+
+            case PC:
+                actualValue = state.getPC();
+                break;
+
+            case INSTRUCTION_COUNT:
+                actualValue = (int) state.getInstructionCount();
+                break;
+
+            default:
+                return false;
+        }
+
+        // Compare using operator
+        int compareValue = bp.getCompareValue();
+
+        switch (bp.getOperator()) {
+            case EQUALS:
+                return actualValue == compareValue;
+            case NOT_EQUALS:
+                return actualValue != compareValue;
+            case LESS_THAN:
+                return actualValue < compareValue;
+            case LESS_EQUAL:
+                return actualValue <= compareValue;
+            case GREATER_THAN:
+                return actualValue > compareValue;
+            case GREATER_EQUAL:
+                return actualValue >= compareValue;
+            default:
+                return false;
+        }
     }
 }

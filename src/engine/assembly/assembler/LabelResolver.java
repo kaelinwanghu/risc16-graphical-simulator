@@ -103,7 +103,7 @@ public final class LabelResolver {
         // Update instruction
         InstructionFormat old = context.getInstruction(ref.getInstructionIndex());
         InstructionFormat updated = InstructionFormat.createRRI(old.getOpcode(), old.getRegA(), old.getRegB(), offset,
-                old.getAddress());
+                old.getAddress(), old.getSourceLine());
 
         context.replaceInstruction(ref.getInstructionIndex(), updated);
     }
@@ -131,7 +131,7 @@ public final class LabelResolver {
             }
             // Update instruction
             InstructionFormat updated = InstructionFormat.createRRI(old.getOpcode(), old.getRegA(), old.getRegB(),
-                    offset, old.getAddress());
+                    offset, old.getAddress(), old.getSourceLine());
             context.replaceInstruction(ref.getInstructionIndex(), updated);
 
         } else {
@@ -159,7 +159,7 @@ public final class LabelResolver {
         // Update ADDI instruction
         InstructionFormat old = context.getInstruction(ref.getInstructionIndex());
         InstructionFormat updated = InstructionFormat.createRRI(old.getOpcode(), old.getRegA(), old.getRegB(), lower6,
-                old.getAddress());
+                old.getAddress(), old.getSourceLine());
         context.replaceInstruction(ref.getInstructionIndex(), updated);
     }
 
@@ -176,7 +176,7 @@ public final class LabelResolver {
         // Update LUI instruction
         InstructionFormat old = context.getInstruction(ref.getInstructionIndex());
         InstructionFormat updated = InstructionFormat.createRI(old.getOpcode(), old.getRegA(), upper10,
-                old.getAddress());
+                old.getAddress(), old.getSourceLine());
         context.replaceInstruction(ref.getInstructionIndex(), updated);
     }
 

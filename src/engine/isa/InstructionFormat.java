@@ -20,11 +20,12 @@ public final class InstructionFormat {
     
     // Address of this instruction for debugging
     private final int address;
+    private final int sourceLine;
     
     /**
      * Private constructor - use static factory methods to create instances
      */
-    private InstructionFormat(Opcode opcode, int regA, int regB, int regC, int immediate, int address) {
+    private InstructionFormat(Opcode opcode, int regA, int regB, int regC, int immediate, int address, int sourceLine) {
         this.opcode = opcode;
         this.format = opcode.getFormat();
         this.regA = regA;
@@ -32,6 +33,7 @@ public final class InstructionFormat {
         this.regC = regC;
         this.immediate = immediate;
         this.address = address;
+        this.sourceLine = sourceLine;
     }
     
     /**
@@ -45,7 +47,7 @@ public final class InstructionFormat {
      * 
      * @return the decoded instruction
      */
-    public static InstructionFormat createRRR(Opcode opcode, int regA, int regB, int regC, int address) {
+    public static InstructionFormat createRRR(Opcode opcode, int regA, int regB, int regC, int address, int sourceLine) {
         if (opcode.getFormat() != FormatType.RRR) {
             throw new IllegalArgumentException(opcode + " is not an RRR instruction");
         }
@@ -54,7 +56,7 @@ public final class InstructionFormat {
         validateRegister(regB, "regB");
         validateRegister(regC, "regC");
         
-        return new InstructionFormat(opcode, regA, regB, regC, 0, address);
+        return new InstructionFormat(opcode, regA, regB, regC, 0, address, sourceLine);
     }
     
     /**
@@ -68,7 +70,7 @@ public final class InstructionFormat {
      * 
      * @return the decoded instruction
      */
-    public static InstructionFormat createRRI(Opcode opcode, int regA, int regB, int immediate, int address) {
+    public static InstructionFormat createRRI(Opcode opcode, int regA, int regB, int immediate, int address, int sourceLine) {
         if (opcode.getFormat() != FormatType.RRI) {
             throw new IllegalArgumentException(opcode + " is not an RRI instruction");
         }
@@ -76,7 +78,7 @@ public final class InstructionFormat {
         validateRegister(regB, "regB");
         validateImmediate(immediate, 7, true);
         
-        return new InstructionFormat(opcode, regA, regB, -1, immediate, address);
+        return new InstructionFormat(opcode, regA, regB, -1, immediate, address, sourceLine);
     }
     
     /**
@@ -89,14 +91,14 @@ public final class InstructionFormat {
      * 
      * @return the decoded instruction
      */
-    public static InstructionFormat createRI(Opcode opcode, int regA, int immediate, int address) {
+    public static InstructionFormat createRI(Opcode opcode, int regA, int immediate, int address, int sourceLine) {
         if (opcode.getFormat() != FormatType.RI) {
             throw new IllegalArgumentException(opcode + " is not an RI instruction");
         }
         validateRegister(regA, "regA");
         validateImmediate(immediate, 10, false);
         
-        return new InstructionFormat(opcode, regA, -1, -1, immediate, address);
+        return new InstructionFormat(opcode, regA, -1, -1, immediate, address, sourceLine);
     }
         
     public Opcode getOpcode() {
@@ -134,6 +136,10 @@ public final class InstructionFormat {
     
     public int getAddress() {
         return address;
+    }
+    
+    public int getSourceLine() {
+        return sourceLine;
     }
     
     // Validators

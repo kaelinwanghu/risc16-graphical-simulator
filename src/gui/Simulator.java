@@ -36,6 +36,8 @@ import java.util.Set;
 import gui.facade.EngineFacade;
 import gui.facade.EngineObserver;
 import engine.assembly.AssemblyResult;
+import engine.debug.Breakpoint;
+import engine.debug.BreakpointException;
 import engine.assembly.AssemblyError;
 import engine.execution.ProcessorState;
 import engine.execution.ExecutionException;
@@ -43,6 +45,7 @@ import engine.execution.ExecutionResult;
 
 import gui.dialogs.MessageDialog;
 import gui.dialogs.SnapshotsDialog;
+import gui.dialogs.BreakpointsDialog;
 import gui.dialogs.InstructionSetDialog;
 
 @SuppressWarnings("serial")
@@ -64,6 +67,7 @@ public class Simulator extends JFrame implements EngineObserver {
 	private boolean isModified = false;
 	private JMenu fileMenuRef;
 	private SnapshotsDialog snapshotsDialog;
+	private BreakpointsDialog breakpointsDialog;
 
 	private JPanel main;
 	private JButton execute;
@@ -126,6 +130,7 @@ public class Simulator extends JFrame implements EngineObserver {
 		storageViewer = new StorageViewer(this, engineFacade);
 		storageViewer.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 		storageViewer.updateDebugButtonVisibility(engineFacade.getDebugManager().isEnabled());
+		breakpointsDialog = new BreakpointsDialog(this, engineFacade);
 
 		autoSaver = new AutoSaver(fileManager, inputPanel, this);
 		autoSaver.start();
@@ -404,9 +409,6 @@ public class Simulator extends JFrame implements EngineObserver {
 		messageDialog.showInfo(message);
 	}
 
-	// =================================================================
-	// NEW: Assembly Method (V2)
-	// =================================================================
 
 	private void assembleProgram() {
 		try {
@@ -443,6 +445,35 @@ public class Simulator extends JFrame implements EngineObserver {
 				engineFacade.run();
 				// Observer (onStateChanged + onHalt) handles UI updates
 			}
+
+		} catch (BreakpointException bpEx) {
+			// Breakpoint hit - show details and stay paused
+
+			int sourceLine = bpEx.getSourceLine();
+			Breakpoint bp = bpEx.getBreakpoint();
+			ProcessorState state = bpEx.getState();
+
+			StringBuilder message = new StringBuilder();
+			message.append("Breakpoint hit!\n\n");
+			message.append(String.format("PC: 0x%04X%n", state.getPC()));
+			message.append(String.format("Instructions: %d%n", state.getInstructionCount()));
+			message.append(String.format("Line: %d%n", sourceLine));
+
+			if (bp != null && bp.isConditional()) {
+				message.append("\nCondition: ").append(bp.getDescription());
+			}
+
+			message.append(
+					"\n\nExecution paused.\n");
+
+			JOptionPane.showMessageDialog(
+					this,
+					message.toString(),
+					"Breakpoint Hit",
+					JOptionPane.INFORMATION_MESSAGE);
+
+			// Keep execute/step buttons enabled so user can continue
+
 		} catch (ExecutionException ex) {
 			// Observer (onExecutionError) already handled this
 			// No need to do anything here
@@ -739,5 +770,13 @@ public class Simulator extends JFrame implements EngineObserver {
 
 		// Must not be in edit mode (execute buttons should be enabled)
 		return execute.isEnabled() || executeStep.isEnabled();
+	}
+
+	public InputPanel getInputPanel() {
+		return inputPanel;
+	}
+
+	public void showBreakpointsDialog() {
+		breakpointsDialog.showDialog();
 	}
 }

@@ -50,18 +50,7 @@ public class InputPanel extends JPanel {
 				simulator.setModified(true);
 			}
 		});
-		
-		// Set up breakpoint listener (for future use)
-		lineNumberedTextArea.setBreakpointListener((lineNumber, isSet) -> {
-			if (isSet) {
-				System.out.println("Breakpoint set at line " + lineNumber);
-				// TODO: Add to DebugManager when breakpoints are implemented
-			} else {
-				System.out.println("Breakpoint removed at line " + lineNumber);
-				// TODO: Remove from DebugManager when breakpoints are implemented
-			}
-		});
-		
+				
 		// Create instruction set button
 		JButton instructionSet = new JButton("Instruction Set");
 		instructionSet.setFocusable(false);

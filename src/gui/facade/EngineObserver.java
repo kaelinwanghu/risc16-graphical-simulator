@@ -15,23 +15,23 @@ import engine.execution.ExecutionResult;
  * - Halt
  */
 public interface EngineObserver {
-    
+
     /**
      * Called when processor state changes (after each instruction)
      * 
      * @param oldState the state before execution (may be null)
      * @param newState the state after execution
-     * @param result the execution result of the instruction
+     * @param result   the execution result of the instruction
      */
     void onStateChanged(ProcessorState oldState, ProcessorState newState, ExecutionResult result);
-    
+
     /**
      * Called when a new program is successfully loaded
      * 
      * @param result the assembly result
      */
     void onProgramLoaded(AssemblyResult result);
-    
+
     /**
      * Called when assembly fails
      * 

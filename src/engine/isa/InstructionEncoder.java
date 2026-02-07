@@ -81,7 +81,7 @@ public class InstructionEncoder {
                 int regB = (bits >> 7) & 0x7;
                 // Extract regC (bits [2:0])
                 int regC = bits & 0x7;
-                return InstructionFormat.createRRR(opcode, regA, regB, regC, address);
+                return InstructionFormat.createRRR(opcode, regA, regB, regC, address, -1);
                 
             case RRI:
                 // Extract regB (bits [9:7])
@@ -92,12 +92,12 @@ public class InstructionEncoder {
                 if ((imm7 & 0x40) != 0) {
                     imm7 |= 0xFFFFFF80;
                 }
-                return InstructionFormat.createRRI(opcode, regA, regB, imm7, address);
+                return InstructionFormat.createRRI(opcode, regA, regB, imm7, address, -1);
                 
             case RI:
                 // Extract 10-bit unsigned immediate (bits [9:0])
                 int imm10 = bits & 0x3FF;
-                return InstructionFormat.createRI(opcode, regA, imm10, address);
+                return InstructionFormat.createRI(opcode, regA, imm10, address, -1);
                 
             default:
                 throw new IllegalStateException("Unknown format type: " + opcode.getFormat());

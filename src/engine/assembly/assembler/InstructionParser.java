@@ -73,7 +73,7 @@ public final class InstructionParser {
         int regC = parseRegister(operands[2], token);
 
         InstructionFormat instruction = InstructionFormat.createRRR(opcode, regA, regB, regC,
-                context.getCurrentAddress());
+                context.getCurrentAddress(), token.getLineNumber());
 
         context.addInstruction(instruction);
     }
@@ -96,7 +96,7 @@ public final class InstructionParser {
         // JALR has no immediate
         if (opcode == Opcode.JALR) {
             InstructionFormat instruction = InstructionFormat.createRRI(opcode, regA, regB, 0,
-                    context.getCurrentAddress());
+                    context.getCurrentAddress(), token.getLineNumber());
             context.addInstruction(instruction);
             return;
         }
@@ -108,7 +108,7 @@ public final class InstructionParser {
 
             // Create placeholder instruction
             InstructionFormat instruction = InstructionFormat.createRRI(opcode, regA, regB, 0,
-                    context.getCurrentAddress());
+                    context.getCurrentAddress(), token.getLineNumber());
             int instructionIndex = context.getInstructions().size();
             context.addInstruction(instruction);
             
@@ -135,12 +135,12 @@ public final class InstructionParser {
             }
 
             InstructionFormat instruction = InstructionFormat.createRRI(opcode, regA, regB, immediate,
-                    context.getCurrentAddress());
+                    context.getCurrentAddress(), token.getLineNumber());
             context.addInstruction(instruction);
         } else {
             // It's a label - create placeholder and unresolved reference
             InstructionFormat instruction = InstructionFormat.createRRI(opcode, regA, regB, 0,
-                    context.getCurrentAddress()); // Placeholder immediate
+                    context.getCurrentAddress(), token.getLineNumber()); // Placeholder immediate
 
             int instructionIndex = context.getInstructions().size();
             context.addInstruction(instruction);
@@ -170,7 +170,7 @@ public final class InstructionParser {
             String label = immStr.substring("__MOVI_UPPER__".length());
 
             // Create placeholder instruction
-            InstructionFormat instruction = InstructionFormat.createRI(opcode, regA, 0, context.getCurrentAddress());
+            InstructionFormat instruction = InstructionFormat.createRI(opcode, regA, 0, context.getCurrentAddress(), token.getLineNumber());
             int instructionIndex = context.getInstructions().size();
             context.addInstruction(instruction);
 
@@ -201,7 +201,7 @@ public final class InstructionParser {
         }
 
         InstructionFormat instruction = InstructionFormat.createRI(opcode, regA, immediate,
-                context.getCurrentAddress());
+                context.getCurrentAddress(), token.getLineNumber());
 
         context.addInstruction(instruction);
     }

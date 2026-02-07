@@ -73,7 +73,7 @@ public class StorageSettingsDialog extends JDialog {
 		memViewPanel.add(memoryViewStart);
 		memViewPanel.add(memoryViewCount);
 
-		enableDebugging = new JCheckBox("Enable Debugging Features");
+		enableDebugging = new JCheckBox("Enable Debugging Features (Experimental)");
 		enableDebugging.setSelected(engineFacade.getDebugManager().isEnabled());
 		enableDebugging.setFont(new Font("Consolas", Font.PLAIN, 16));
 		enableDebugging.setFocusable(false);
