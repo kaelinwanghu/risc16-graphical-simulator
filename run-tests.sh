@@ -99,7 +99,7 @@ TEST_CLASSES=$(find "$TEST_BUILD_DIR" -name "*Test.class" | \
     sed 's|.class||')
 
 # Run tests
-java -cp "$BUILD_DIR:$TEST_BUILD_DIR:$JUNIT_JAR:$HAMCREST_JAR" \
+java -cp "$SRC_DIR:$BUILD_DIR:$TEST_BUILD_DIR:$JUNIT_JAR:$HAMCREST_JAR" \
     org.junit.runner.JUnitCore $TEST_CLASSES
 
 TEST_RESULT=$?
