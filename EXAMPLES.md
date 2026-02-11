@@ -2,78 +2,50 @@
 
 ### Program 1
 
-* Function : sums all values specified in the data part and stores them in R5.
+* Function : Arithmetic right shifts a number once	
 * Code :
 ```
-addi r1, r0, 32
-addi r2, r0, 36
-addi r3, r0, 52
+lw r1, r0, toshift # Load the number to be shifted
+addi r2, r0, 0 # Initialize r2, the result register, to 0
+addi r5, r0, 1 # And the constant 1
 
-lw r4, r1, 0
-add r5, r5, r4
-addi r1, r1, 2
-ble r1, r2, -8
+movi r3, 0x8000
 
-addi r1, r1, 4
-addi r2, r2, 10
-ble r1, r3, -14
-```
-* Data :
-```
-32 1
-34 2
-36 3
-42 1
-44 2
-46 3
-52 1
-54 2
-56 3
+nand r4, r1, r3 
+nand r4, r4, r4 # Check whether r1 is negative or not
+
+beq r4, r0, 28  # If not negative, branch to the start of the positive loop
+
+nand r6, r1, r5 # If negative, check whether even or odd (odd negatives truncate up, so -17 -> -9 while 17 -> 8)
+nand r6, r6, r6
+
+nand r1, r1, r1 # Convert the number to be positive so the algorithm works
+addi r1, r1, 1
+
+beq r1, r0, 8 # Do the usual loop of simulated "division"
+beq r1, r5, 6
+addi r1, r1, -2
+addi r2, r2, 1
+beq r0, r0, -10
+
+beq r6, r0, 2 # Then, at the end of the "division", if r6 is equal to 0 (even), skip the next line
+addi r2, r2, 1 # Adds an extra 1 to r2
+nand r2, r2, r2
+addi r2, r2, 1 # Before converting it back to a negative
+beq r0, r0, 10 # Jump to end of program (for negatives)
+
+beq r1, r0, 8 # Positive loop, simulated "division"
+beq r1, r5, 6
+addi r1, r1, -2
+addi r2, r2, 1
+beq r0, r0, -10
+
+toshift: .fill 40
 ```
 
 ### Program 2
 
-* Function : loads and doubles all values specified in the data part, then stores them back. The aim of this program is to test the write hit policies (since all stores are preceded by loads of the same address).
-* Code :
-```
-addi r1, r0, 32
-addi r2, r0, 36
-addi r3, r0, 0
-addi r4, r0, 5
-
-lw r5, r1, 0
-muli r5, r5, 2
-sw r5, r1, 0
-addi r1, r1, 2
-ble r1, r2, -10
-
-addi r1, r1, 10
-addi r2, r2, 16
-addi r3, r3, 1
-blt r3, r4, -18
-```
-* Data :
-```
-32 1
-34 2
-36 3
-48 4
-50 5
-52 6
-64 7
-66 8
-68 9
-80 10
-82 11
-84 12
-96 13
-98 14
-100 15
-```
-
-### Program 3
-
-* Function : This program is equivalent to the following code snippet. It's aim is to test the write miss policies.
+* Function : This program is equivalent to the following code snippet
 ```
 for(int i = 0; i < 16; i++)  {
 	int address = 32 + i * 2;
@@ -86,8 +58,10 @@ addi r1, r0, 32
 addi r2, r0, 0
 addi r3, r0, 16
 
-sw r1, r1, 0
+store: sw r1, r1, 0
 addi r1, r1, 2
 addi r2, r2, 1
-ble r2, r3, -8
+beq r2, r3, exit # If we've done 16 iterations, skip the back-jump and exit
+beq r0, r0, store # Otherwise, jump back to the store
+exit: halt
 ```

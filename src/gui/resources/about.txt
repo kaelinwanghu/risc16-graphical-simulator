@@ -1,6 +1,6 @@
 Original: https://github.com/bishoybassem/architectural-simulator
 Forked and Updated By:
 Kaelin Wang Hu
-For any questions, improvements, or bugs, please contact Kaelin (wanghuk@rose-hulman.edu)
+For any questions, improvements, or bugs, please contact wanghuk@rose-hulman.edu
 
 Accessible Graphical RISC-16 Simulator
