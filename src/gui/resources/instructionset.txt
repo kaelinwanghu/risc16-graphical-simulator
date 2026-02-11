@@ -1,16 +1,16 @@
 RRR-Type Instructions
 ---------------------
-ADD   R1, R2, R3	R1 = R2 + R3
-NAND  R1, R2, R3	R1 = ~(R2 & R3)
+ADD   Ra, Rb, Rc	Ra = Rb + Rc
+NAND  Ra, Rb, Rc	Ra = ~(Rb & Rc)
 
 RRI-Type Instructions
 ---------------------
-ADDI  R1, R2, IMM	R1 = R2 + IMM
-LW    R1, R2, IMM	R1 = MEM[R2 + IMM]
-SW    R1, R2, IMM	MEM[R2 + IMM] = R1
-BEQ   R1, R2, IMM	IF (R1 == R2) PC += IMM
-JALR  R1, R2		R1 = PC, PC = R2
+ADDI  Ra, Rb, IMM	Ra = Rb + IMM
+LW    Ra, Rb, IMM	Ra = MEM[Rb + IMM]
+SW    Ra, Rb, IMM	MEM[Rb + IMM] = Ra
+BEQ   Ra, Rb, IMM	IF (Ra == Rb) PC += IMM
+JALR  Ra, Rb		Ra = PC, PC = Rb
 
 RI-Type Instructions
 ---------------------
-LUI   R1, IMM       R1 = IMM << 6
+LUI   Ra, IMM       Ra = IMM << 6

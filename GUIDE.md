@@ -1,25 +1,28 @@
 # Guide
 
-1. Click "Settings" to configure the memory and cache hierarchy.
-![screen1](/screenshots/screen1.jpg)
+1. Use "Settings" to configure the program size, execution settings, memory viewing, and debugging features.
+![screen1](/screenshots/screen1.png)
 
-2. Choose the number of data cache levels, enter their configurations, then click "Apply".
-![screen2](/screenshots/screen2.jpg)
+1. Enter the program and its data (with .fill and .space), then click "Assemble".
+![screen2](/screenshots/screen2.png)
 
-3. Enter the program and it's data, then click "Assemble".
-![screen3](/screenshots/screen3.jpg)
+1. Click "Execute Step" to run one instruction or "Execute" to run the whole program.
+![screen3](/screenshots/screen3.png)
 
-4. Click "Execute Step" to run one instruction or "Execute" to run the whole program.
-![screen4](/screenshots/screen4.jpg)
+1. Choose between registers and memory to view their contents at any time, even after execution
+![screen4](/screenshots/screen4.png)
 
-5. Choose between storage units to view their contents at any step during execution.
-![screen5](/screenshots/screen5.jpg)
+1. Click "HEX/DEC" to switch between hexadecimal and decimal representations.
+![screen5](/screenshots/screen5.png)
 
-6. Click "HEX/DEC" to switch between hexadecimal and decimal representations.
-![screen6](/screenshots/screen6.jpg)
+1. After execution, the state is preserved until the next program is assembled
+![screen6](/screenshots/screen6.png)
 
-7. After execution the instructions’ schedule appears.
-![screen7](/screenshots/screen7.jpg)
+1. Runtime Errors will force a halt, requiring the "Edit" button to stop assembly and correct the errors
+![screen7](/screenshots/screen7.png)
 
-8. Enter the configurations, then click "Apply" to update the schedule.
-![screen8](/screenshots/screen8.jpg)
+1. Assembly Errors will result in the program not proceeding to runtime until the errors are fixed
+![screen8](/screenshots/screen8.png)
+
+1. Use debugging features to explore in depth at runtime with live memory editing, snapshots, and breakpoints
+![screen9](/screenshots/screen9.png)
