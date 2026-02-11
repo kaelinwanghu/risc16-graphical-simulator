@@ -22,14 +22,8 @@ See [EXAMPLES.md](/EXAMPLES.md).
 
 ### Download
 
-[Version 1.0](https://github.com/bishoybassem/architectural-simulator/releases/download/v1.0/Architectural.Simulator.jar)
+[Version 2.0](https://github.com/bishoybassem/architectural-simulator/releases/download/v1.0/Architectural.Simulator.jar)
 
-### Screenshots
+### Helpful Resources
 
-![screen1](/screenshots/screen3.jpg)
-
-![screen2](/screenshots/screen2.jpg)
-
-![screen3](/screenshots/screen5.jpg)
-
-![screen3](/screenshots/screen7.jpg)
+[Debugging](/DEBUGGING.md)

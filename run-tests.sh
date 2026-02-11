@@ -64,9 +64,24 @@ echo ""
 echo "Step 1: Compiling source code..."
 echo "----------------------------------------"
 
+# Compile options
+# By default, compile using the current JDK defaults (no Java 8 dependency).
+# Optionally pin a release by setting JAVA_RELEASE (e.g., JAVA_RELEASE=8 or 11).
+JAVAC_VERSION_RAW=$(javac -version 2>&1)
+JAVAC_MAJOR=$(echo "$JAVAC_VERSION_RAW" | awk '{print $2}' | awk -F. '{ if ($1 == "1") print $2; else print $1; }')
+
+JAVAC_OPTS=()
+if [ -n "$JAVA_RELEASE" ]; then
+    if [ -n "$JAVAC_MAJOR" ] && [ "$JAVAC_MAJOR" -ge 9 ] 2>/dev/null; then
+        JAVAC_OPTS+=(--release "$JAVA_RELEASE")
+    else
+        JAVAC_OPTS+=(-source "$JAVA_RELEASE" -target "$JAVA_RELEASE")
+    fi
+fi
+
 # Compile main source files
 find "$SRC_DIR" -name "*.java" > /tmp/sources.txt
-javac -d "$BUILD_DIR" -source 8 -target 8 @/tmp/sources.txt 2>&1
+javac -d "$BUILD_DIR" "${JAVAC_OPTS[@]}" @/tmp/sources.txt 2>&1
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}Source compilation failed!${NC}"
@@ -80,7 +95,7 @@ echo "----------------------------------------"
 
 # Compile test files
 find "$TEST_DIR" -name "*.java" > /tmp/test_sources.txt
-javac -d "$TEST_BUILD_DIR" -source 8 -target 8 -cp "$CLASSPATH" @/tmp/test_sources.txt 2>&1
+javac -d "$TEST_BUILD_DIR" "${JAVAC_OPTS[@]}" -cp "$CLASSPATH" @/tmp/test_sources.txt 2>&1
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}Test compilation failed!${NC}"

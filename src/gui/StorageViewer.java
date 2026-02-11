@@ -564,17 +564,21 @@ public class StorageViewer extends JPanel {
 		Integer newValue = valueEditorDialog.editRegister(regNum, currentValue);
 
 		if (newValue != null) {
-			// Apply the new value
-			try {
-				engineFacade.setRegister(regNum, (short) newValue.intValue());
-				editedRegisters.add(regNum);
-				refresh();
-			} catch (Exception ex) {
-				JOptionPane.showMessageDialog(
-						this,
-						"Failed to set register: " + ex.getMessage(),
-						"Error",
-						JOptionPane.ERROR_MESSAGE);
+			short newValueShort = (short) newValue.intValue();
+			if (newValueShort != currentValue) {
+				// Apply the new value
+				try {
+					engineFacade.setRegister(regNum, (short) newValue.intValue());
+					editedRegisters.add(regNum);
+					refresh();
+				} catch (Exception ex) {
+					JOptionPane.showMessageDialog(
+							this,
+							"Failed to set register: " + ex.getMessage(),
+							"Error",
+							JOptionPane.ERROR_MESSAGE);
+				}
+
 			}
 		}
 	}
@@ -597,17 +601,21 @@ public class StorageViewer extends JPanel {
 		Integer newValue = valueEditorDialog.editMemory(address, currentValue);
 
 		if (newValue != null) {
-			// Apply the new value
-			try {
-				memory.writeWord(address, (short) newValue.intValue());
-				editedMemoryAddresses.add(address);
-				refresh();
-			} catch (Exception ex) {
-				JOptionPane.showMessageDialog(
-						this,
-						"Failed to set memory: " + ex.getMessage(),
-						"Error",
-						JOptionPane.ERROR_MESSAGE);
+			short newValueShort = (short) newValue.intValue();
+			if (newValueShort != currentValue) {
+				// Apply the new value
+				try {
+					memory.writeWord(address, (short) newValue.intValue());
+					editedMemoryAddresses.add(address);
+					refresh();
+				} catch (Exception ex) {
+					JOptionPane.showMessageDialog(
+							this,
+							"Failed to set memory: " + ex.getMessage(),
+							"Error",
+							JOptionPane.ERROR_MESSAGE);
+				}
+
 			}
 		}
 	}
