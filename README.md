@@ -12,6 +12,11 @@ An accessible Java simulator for the 16-bit RISC processor with pseudoinstructio
 * File Saving: Ability to save and load files with the .as16 extension. Also supports autosaving so that otherwise lost work can easily be recovered.
 * Overall Accessibility: GUI is simple and ucluttered while still being quite flexible. Simple but effective debugging is available and targeted for novices and the advanced alike. Ctrl + Z exists to recover work and push away mistakes.
 
+### Requirements (and Limitations)
+The risc16-simulator.jar given for all of the releases must be run with a **JDK version of 21 or higher**. If a lower version is needed, feel free to pull this repository and modify the build.bat script to target the necessary version (that build.bat is also used to generate release jars).
+
+Also, while the application should be OS and hardware agnostic, do keep in mind that the GUI was developed in a Windows ThinkPad and might perform worse in other environments
+
 ### Guide
 
 See [GUIDE.md](/GUIDE.md).
@@ -27,3 +32,7 @@ See [EXAMPLES.md](/EXAMPLES.md).
 ### Helpful Resources
 
 [Debugging](/DEBUGGING.md)
+
+[Good Practice](/PRACTICES.md)
+
+[RiSC ISA Reference](https://user.eng.umd.edu/~blj/RiSC/RiSC-isa.pdf)
