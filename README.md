@@ -27,7 +27,9 @@ See [EXAMPLES.md](/EXAMPLES.md).
 
 ### Download
 
-[Version 2.0](https://github.com/bishoybassem/architectural-simulator/releases/download/v1.0/Architectural.Simulator.jar)
+[Version 2.0](https://github.com/kaelinwanghu/risc16-graphical-simulator/releases/download/v2.0/risc16-simulator.jar) (*Current*)
+
+[Version 1.0](https://github.com/bishoybassem/architectural-simulator/releases/download/v1.0/Architectural.Simulator.jar) (*Original, cache-focused and ISA-incomplete application*)
 
 ### Helpful Resources
 
