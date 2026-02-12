@@ -2,7 +2,7 @@
 
 An accessible Java simulator for the 16-bit RISC processor with pseudoinstructions, rich debugging features, labels, and more!
 
-Originally made by [bishoybassem](https://github.com/bishoybassem/), refactored by [Kaelin Wang Hu](https://github.com/kaelinwanghu) and tested by [Jack Tanner](https://github.com/jtanner54)
+Originally made by [bishoybassem](https://github.com/bishoybassem/), refactored by [Kaelin Wang Hu](https://github.com/kaelinwanghu) and tested by [Jack Tanner](https://github.com/jtanner54), with consultation and help from Dr. Ed Doering
 
 ### Features
 
