@@ -2,6 +2,8 @@
 
 An accessible Java simulator for the 16-bit RISC processor with pseudoinstructions, rich debugging features, labels, and more!
 
+Originally made by [bishoybassem](https://github.com/bishoybassem/), refactored by [Kaelin Wang Hu](https://github.com/kaelinwanghu) and tested by [Jack Tanner](https://github.com/jtanner54)
+
 ### Features
 
 * Instruction Set Architecture : A simplified ISA based off of the [Ridiculously Simple Computer (RiSC-16)](http://www.ece.umd.edu/~blj/RiSC/). The word size of this computer is 16-bit. The processor has 8 general purpose registers R0 to R7 (16-bit each), with register R0 always containing the value 0.
@@ -29,7 +31,7 @@ See [EXAMPLES.md](/EXAMPLES.md).
 
 [Version 2.0](https://github.com/kaelinwanghu/risc16-graphical-simulator/releases/download/v2.0/risc16-simulator.jar) (*Current*)
 
-[Version 1.0](https://github.com/bishoybassem/architectural-simulator/releases/download/v1.0/Architectural.Simulator.jar) (*Original, cache-focused and ISA-incomplete application*)
+[Version 1.0](https://github.com/bishoybassem/architectural-simulator/releases/download/v1.0/Architectural.Simulator.jar) (*Original, cache-focused and ISA-incomplete*)
 
 ### Helpful Resources
 
