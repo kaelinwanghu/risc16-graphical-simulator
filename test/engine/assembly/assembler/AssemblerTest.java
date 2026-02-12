@@ -9,55 +9,6 @@ import engine.assembly.AssemblyResult;
 import engine.isa.InstructionFormat;
 import engine.isa.Opcode;
 
-/**
- * JUnit tests for the RiSC-16 Assembler
- *
- * ============================================================================
- * RiSC-16 INSTRUCTION SET ARCHITECTURE
- * ============================================================================
- *
- * RRR-type:  [opcode:3][regA:3][regB:3][unused:4][regC:3]
- *            Bits: 15-13      12-10    9-7       6-3       2-0
- *
- * RRI-type:  [opcode:3][regA:3][regB:3][signed imm:7]
- *            Bits: 15-13      12-10    9-7       6-0
- *            Immediate range: -64 to 63
- *
- * RI-type:   [opcode:3][regA:3][unsigned imm:10]
- *            Bits: 15-13      12-10    9-0
- *            Immediate range: 0 to 0x3FF (1023)
- *
- * INSTRUCTIONS:
- * ----------------------------------------------------------------------------
- * Mnemonic  Opcode  Format   Assembly             Action
- * --------  ------  -------  -------------------  ----------------------------
- * ADD       000     RRR      add rA, rB, rC       R[rA] <- R[rB] + R[rC]
- * ADDI      001     RRI      addi rA, rB, imm     R[rA] <- R[rB] + imm
- * NAND      010     RRR      nand rA, rB, rC      R[rA] <- ~(R[rB] & R[rC])
- * LUI       011     RI       lui rA, imm          R[rA] <- imm << 6 (top 10 bits)
- * SW        100     RRI      sw rA, rB, imm       Mem[R[rB] + imm] <- R[rA]
- * LW        101     RRI      lw rA, rB, imm       R[rA] <- Mem[R[rB] + imm]
- * BEQ       110     RRI      beq rA, rB, imm      if R[rA]==R[rB]: PC <- PC+1+imm
- * JALR      111     RRI      jalr rA, rB          PC <- R[rB], R[rA] <- PC+1
- *
- * PSEUDO-INSTRUCTIONS:
- * ----------------------------------------------------------------------------
- * nop                        -> add 0, 0, 0
- * halt                       -> jalr 0, 0 (with non-zero imm)
- * lli rA, imm                -> addi rA, rA, (imm & 0x3F)
- * movi rA, imm               -> lui rA, imm; lli rA, imm (2 instructions)
- * .fill imm                  -> data word initialized to imm
- * .space n                   -> n zero-initialized data words
- *
- * ASSEMBLY SYNTAX:
- * ----------------------------------------------------------------------------
- * - Labels: alphanumeric + underscore, followed by colon (e.g., "start:")
- * - Comments: # to end of line
- * - Registers: r0-r7 (case insensitive)
- * - Immediates: decimal, octal (0 prefix), or hex (0x prefix)
- *
- * ============================================================================
- */
 public class AssemblerTest {
 
     // ========== Basic Instruction Tests ==========

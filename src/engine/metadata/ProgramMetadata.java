@@ -269,4 +269,4 @@ public class ProgramMetadata {
         return String.format("ProgramMetadata[entry=0x%04X, instructions=%d, data=%d, labels=%d]", entryPoint,
                 instructionAddresses.size(), dataAddresses.size(), labelToAddress.size());
     }
-}
+} 
