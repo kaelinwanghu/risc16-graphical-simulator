@@ -72,7 +72,7 @@ public final class DirectiveHandler {
         } else {
             // Label - create placeholder and unresolved reference
             int dataIndex = context.getDataSegments().size();
-            context.addDataSegment(context.getCurrentAddress() - 2, (short) 0);  // Placeholder
+            context.addDataSegment(context.getCurrentAddress(), (short) 0);  // Placeholder
             
             context.addUnresolvedReference(UnresolvedReference.data(value, dataIndex, token.getLineNumber(), token.getOriginalLine()));
         }
