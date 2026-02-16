@@ -9,7 +9,7 @@ ADDI  Ra, Rb, IMM	Ra = Rb + IMM
 LW    Ra, Rb, IMM	Ra = MEM[Rb + IMM]
 SW    Ra, Rb, IMM	MEM[Rb + IMM] = Ra
 BEQ   Ra, Rb, IMM	IF (Ra == Rb) PC += IMM
-JALR  Ra, Rb		Ra = PC, PC = Rb
+JALR  Ra, Rb		Ra = PC + 1, PC = Rb
 
 RI-Type Instructions
 ---------------------
