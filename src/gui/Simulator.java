@@ -7,6 +7,7 @@ import java.awt.Font;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 
@@ -38,6 +39,7 @@ import gui.facade.EngineObserver;
 import engine.assembly.AssemblyResult;
 import engine.debug.Breakpoint;
 import engine.debug.BreakpointException;
+import engine.debug.DebugManager;
 import engine.assembly.AssemblyError;
 import engine.execution.ProcessorState;
 import engine.execution.ExecutionException;
@@ -782,5 +784,40 @@ public class Simulator extends JFrame implements EngineObserver {
 
 	public void showBreakpointsDialog() {
 		breakpointsDialog.showDialog();
+	}
+
+	public void onBreakpointLinesChanged(int fromLine, int delta) {
+		DebugManager dm = engineFacade.getDebugManager();
+		if (!dm.isEnabled())
+			return;
+
+		List<Breakpoint> allBps = new ArrayList<>(dm.getAllBreakpoints());
+
+		for (Breakpoint bp : allBps) {
+			int line = bp.getLineNumber();
+			if (line < fromLine)
+				continue;
+
+			if (delta < 0 && line == fromLine + 1) {
+				// This breakpoint's line was deleted — remove it entirely
+				dm.removeBreakpoint(line);
+				inputPanel.getLineNumberedTextArea().setBreakpoint(line, false);
+				continue;
+			}
+
+			// Line survived but its number shifted — move the dot
+			int newLine = line + delta;
+			dm.removeBreakpoint(line);
+			inputPanel.getLineNumberedTextArea().setBreakpoint(line, false);
+
+			if (newLine >= 1) {
+				int resolvedLine = inputPanel.getLineNumberedTextArea().resolveToContentLine(newLine);
+				if (resolvedLine != -1) {
+					bp.setLineNumber(resolvedLine);
+					dm.setBreakpointAtLine(resolvedLine, bp);
+					inputPanel.getLineNumberedTextArea().setBreakpoint(resolvedLine, true);
+				}
+			}
+		}
 	}
 }

@@ -137,7 +137,7 @@ public class InstructionFormatTest {
         assertEquals(Opcode.LUI, instr.getOpcode());
         assertEquals(FormatType.RI, instr.getFormat());
         assertEquals(1, instr.getRegA());
-        assertEquals(0x3FF, instr.getImmediate());  // Max 10-bit unsigned
+        assertEquals(0x3FF, instr.getImmediate()); // Max 10-bit unsigned
     }
 
     @Test
@@ -171,25 +171,25 @@ public class InstructionFormatTest {
     @Test(expected = IllegalStateException.class)
     public void testRRR_NoImmediate() {
         InstructionFormat instr = InstructionFormat.createRRR(Opcode.ADD, 1, 2, 3, 0);
-        instr.getImmediate();  // Should throw - RRR has no immediate
+        instr.getImmediate(); // Should throw - RRR has no immediate
     }
 
     @Test(expected = IllegalStateException.class)
     public void testRI_NoRegB() {
         InstructionFormat instr = InstructionFormat.createRI(Opcode.LUI, 1, 100, 0);
-        instr.getRegB();  // Should throw - RI has no regB
+        instr.getRegB(); // Should throw - RI has no regB
     }
 
     @Test(expected = IllegalStateException.class)
     public void testRI_NoRegC() {
         InstructionFormat instr = InstructionFormat.createRI(Opcode.LUI, 1, 100, 0);
-        instr.getRegC();  // Should throw - only RRR has regC
+        instr.getRegC(); // Should throw - only RRR has regC
     }
 
     @Test(expected = IllegalStateException.class)
     public void testRRI_NoRegC() {
         InstructionFormat instr = InstructionFormat.createRRI(Opcode.ADDI, 1, 2, 10, 0);
-        instr.getRegC();  // Should throw - only RRR has regC
+        instr.getRegC(); // Should throw - only RRR has regC
     }
 
     // ========== Assembly String ==========
@@ -210,6 +210,12 @@ public class InstructionFormatTest {
     public void testToAssembly_LUI() {
         InstructionFormat instr = InstructionFormat.createRI(Opcode.LUI, 3, 100, 0);
         assertEquals("LUI r3, 100", instr.toAssembly());
+    }
+
+    @Test
+    public void testToAssembly_JALR() {
+        InstructionFormat instr = InstructionFormat.createRRI(Opcode.JALR, 7, 6, 0, 0);
+        assertEquals("JALR r7, r6", instr.toAssembly());
     }
 
     // ========== Equality ==========

@@ -16,26 +16,37 @@ import java.util.Set;
  * A text area with line numbers and breakpoint support
  */
 public class LineNumberedTextArea extends JPanel {
-    
+
     private JTextArea textArea;
     private LineNumberGutter lineNumberArea;
     private JScrollPane scrollPane;
     private Set<Integer> breakpoints;
     private BreakpointClickListener breakpointListener;
     private boolean gutterUpdatePending;
-    
+    private BreakpointShiftListener shiftListener;
+
     /**
      * Interface for breakpoint click events
      */
     public interface BreakpointClickListener {
         void onBreakpointToggled(int lineNumber, boolean isSet);
     }
-    
+
+    public interface BreakpointShiftListener {
+        /**
+         * Called when line insertions/deletions require breakpoints to be repositioned.
+         * 
+         * @param fromLine first line affected (1-based, inclusive)
+         * @param delta    +N means N lines inserted, -N means N lines deleted
+         */
+        void onLinesChanged(int fromLine, int delta);
+    }
+
     public LineNumberedTextArea(int rows, int columns) {
         super(new BorderLayout());
-        
+
         this.breakpoints = new HashSet<>();
-        
+
         // Main text area
         textArea = new JTextArea(rows, columns);
         textArea.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
@@ -44,7 +55,7 @@ public class LineNumberedTextArea extends JPanel {
         // and cause the gutter (which numbers logical lines) to drift.
         textArea.setLineWrap(false);
         textArea.setWrapStyleWord(false);
-        
+
         // Line number area
         lineNumberArea = new LineNumberGutter();
         lineNumberArea.setBackground(new Color(240, 240, 240));
@@ -53,28 +64,50 @@ public class LineNumberedTextArea extends JPanel {
         // Keep left small; give a bit more room on the right for the breakpoint dot.
         lineNumberArea.setBorder(new EmptyBorder(5, 3, 5, 6));
         lineNumberArea.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        
+
         // Sync scrolling and line numbers
         textArea.getDocument().addDocumentListener(new DocumentListener() {
+
+            private int lastLineCount = 1;
+
+            private void handleChange(DocumentEvent e) {
+                updateLineNumbers();
+
+                int currentLineCount = textArea.getLineCount();
+                int delta = currentLineCount - lastLineCount;
+                if (delta != 0 && shiftListener != null) {
+                    // Find which line the edit occurred on
+                    try {
+                        int affectedLine = textArea.getLineOfOffset(e.getOffset()) + 1; // 1-based
+                        // For deletions the line count has already dropped, so clamp
+                        shiftListener.onLinesChanged(affectedLine, delta);
+                    } catch (BadLocationException ex) {
+                        // ignore
+                    }
+                }
+                lastLineCount = currentLineCount;
+            }
+
             @Override
             public void insertUpdate(DocumentEvent e) {
-                updateLineNumbers();
+                handleChange(e);
             }
-            
+
             @Override
             public void removeUpdate(DocumentEvent e) {
-                updateLineNumbers();
+                handleChange(e);
             }
-            
+
             @Override
             public void changedUpdate(DocumentEvent e) {
                 updateLineNumbers();
             }
         });
 
-        // Repaint gutter on caret movement (typing can scroll without document changes).
+        // Repaint gutter on caret movement (typing can scroll without document
+        // changes).
         textArea.addCaretListener(e -> lineNumberArea.repaint());
-        
+
         // Handle breakpoint clicks
         lineNumberArea.addMouseListener(new MouseAdapter() {
             @Override
@@ -82,7 +115,7 @@ public class LineNumberedTextArea extends JPanel {
                 handleLineNumberClick(e);
             }
         });
-        
+
         // Create scroll pane
         scrollPane = new JScrollPane(textArea);
         scrollPane.setRowHeaderView(lineNumberArea);
@@ -91,9 +124,9 @@ public class LineNumberedTextArea extends JPanel {
 
         // Ensure gutter repaints when the viewport scrolls.
         scrollPane.getViewport().addChangeListener(e -> lineNumberArea.repaint());
-        
+
         add(scrollPane, BorderLayout.CENTER);
-        
+
         updateLineNumbers();
     }
 
@@ -105,7 +138,7 @@ public class LineNumberedTextArea extends JPanel {
         lineNumberArea.setBaselineOffsetPx(offsetPx);
         updateLineNumbers();
     }
-    
+
     /**
      * Updates the line numbers display
      */
@@ -121,34 +154,88 @@ public class LineNumberedTextArea extends JPanel {
             lineNumberArea.repaint();
         });
     }
-    
+
     /**
-     * Handles clicks on line numbers (for breakpoint toggling)
+     * Handles clicks on line numbers (for breakpoint toggling).
+     * 
+     * If the clicked line is blank or comment-only, the breakpoint snaps
+     * forward to the next line that has actual content. If no such line
+     * exists, the click is ignored.
      */
     private void handleLineNumberClick(MouseEvent e) {
         try {
             // Map click point into the main text area coordinate space.
             Point pInTextArea = SwingUtilities.convertPoint(lineNumberArea, e.getPoint(), textArea);
             int offset = textArea.viewToModel2D(new Point(0, pInTextArea.y));
-            int lineNumber = textArea.getLineOfOffset(offset) + 1;
-            
-            // Toggle breakpoint
-            boolean wasSet = breakpoints.contains(lineNumber);
+            int clickedLine = textArea.getLineOfOffset(offset) + 1; // 1-based
+            if (breakpoints.contains(clickedLine)) {
+                breakpoints.remove(clickedLine);
+                updateLineNumbers();
+                if (breakpointListener != null) {
+                    breakpointListener.onBreakpointToggled(clickedLine, false);
+                }
+                return;
+            }
+
+            // Resolve to the nearest content-bearing line at or after the click.
+            int resolvedLine = resolveToContentLine(clickedLine);
+            if (resolvedLine == -1) {
+                return; // No content line found — ignore click
+            }
+
+            // Toggle on the resolved line.
+            boolean wasSet = breakpoints.contains(resolvedLine);
             if (wasSet) {
-                breakpoints.remove(lineNumber);
+                breakpoints.remove(resolvedLine);
             } else {
-                breakpoints.add(lineNumber);
+                breakpoints.add(resolvedLine);
             }
-            
+
             updateLineNumbers();
-            
-            // Notify listener
+
+            // Notify listener with the resolved line so DebugManager stays in sync.
             if (breakpointListener != null) {
-                breakpointListener.onBreakpointToggled(lineNumber, !wasSet);
+                breakpointListener.onBreakpointToggled(resolvedLine, !wasSet);
             }
-            
+
         } catch (BadLocationException ex) {
             // Ignore click outside text
+        }
+    }
+
+    /**
+     * Finds the first line at or after {@code startLine} that has content
+     * (i.e., is not blank and not a pure comment line).
+     *
+     * @param startLine 1-based line number to start searching from
+     * @return the 1-based resolved line number, or -1 if none found
+     */
+    public int resolveToContentLine(int startLine) {
+        int totalLines = textArea.getLineCount();
+        for (int line = startLine; line <= totalLines; line++) {
+            if (isContentLine(line)) {
+                return line;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Returns true if the given 1-based line number has actual assembly content
+     * (non-blank after stripping comments).
+     */
+    private boolean isContentLine(int lineNumber) {
+        try {
+            int start = textArea.getLineStartOffset(lineNumber - 1);
+            int end = textArea.getLineEndOffset(lineNumber - 1);
+            String text = textArea.getDocument().getText(start, end - start);
+
+            // Strip comment and surrounding whitespace
+            int commentIdx = text.indexOf('#');
+            String effective = (commentIdx >= 0 ? text.substring(0, commentIdx) : text).trim();
+            return !effective.isEmpty();
+        } catch (BadLocationException ex) {
+            return false;
         }
     }
 
@@ -209,8 +296,10 @@ public class LineNumberedTextArea extends JPanel {
                 FontMetrics textFm = textArea.getFontMetrics(textArea.getFont());
                 Rectangle visible = textArea.getVisibleRect();
 
-                // Use the text area's visible region directly. The gutter has its own clip coordinates,
-                // so mixing gutter clip.y into text-area coordinates can cause desync during rapid edits.
+                // Use the text area's visible region directly. The gutter has its own clip
+                // coordinates,
+                // so mixing gutter clip.y into text-area coordinates can cause desync during
+                // rapid edits.
                 int startOffset = textArea.viewToModel2D(new Point(0, visible.y));
                 int endOffset = textArea.viewToModel2D(new Point(0, visible.y + visible.height));
                 int startLine = textArea.getLineOfOffset(startOffset);
@@ -232,7 +321,8 @@ public class LineNumberedTextArea extends JPanel {
 
                     String num = String.valueOf(lineNumber);
                     // Match the text area's baseline: top-of-line + ascent.
-                    // (The line rectangle height can include leading; using ascent avoids a slow drift.)
+                    // (The line rectangle height can include leading; using ascent avoids a slow
+                    // drift.)
                     int baseline = y + textFm.getAscent() + baselineOffsetPx;
                     // Right-align numbers so they expand to the left as digits increase.
                     int numberRightX = rightEdge;
@@ -259,21 +349,21 @@ public class LineNumberedTextArea extends JPanel {
             }
         }
     }
-    
+
     /**
      * Sets a breakpoint click listener
      */
     public void setBreakpointListener(BreakpointClickListener listener) {
         this.breakpointListener = listener;
     }
-    
+
     /**
      * Gets the set of breakpoint line numbers
      */
     public Set<Integer> getBreakpoints() {
         return new HashSet<>(breakpoints);
     }
-    
+
     /**
      * Sets a breakpoint at a specific line
      */
@@ -285,7 +375,7 @@ public class LineNumberedTextArea extends JPanel {
         }
         updateLineNumbers();
     }
-    
+
     /**
      * Clears all breakpoints
      */
@@ -293,14 +383,14 @@ public class LineNumberedTextArea extends JPanel {
         breakpoints.clear();
         updateLineNumbers();
     }
-    
+
     /**
      * Gets the text content
      */
     public String getText() {
         return textArea.getText();
     }
-    
+
     /**
      * Sets the text content
      */
@@ -308,14 +398,14 @@ public class LineNumberedTextArea extends JPanel {
         textArea.setText(text);
         updateLineNumbers();
     }
-    
+
     /**
      * Gets the underlying text area
      */
     public JTextArea getTextArea() {
         return textArea;
     }
-    
+
     /**
      * Clears the text
      */
@@ -324,18 +414,22 @@ public class LineNumberedTextArea extends JPanel {
         breakpoints.clear();
         updateLineNumbers();
     }
-    
+
     /**
      * Sets the caret position
      */
     public void setCaretPosition(int position) {
         textArea.setCaretPosition(position);
     }
-    
+
     /**
      * Gets the document for undo/redo support
      */
     public Document getDocument() {
         return textArea.getDocument();
+    }
+
+    public void setBreakpointShiftListener(BreakpointShiftListener listener) {
+        this.shiftListener = listener;
     }
 }

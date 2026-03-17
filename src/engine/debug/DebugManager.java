@@ -165,6 +165,10 @@ public class DebugManager {
         breakpoints.put(lineNumber, new Breakpoint(lineNumber, watchType, watchTarget, operator, compareValue));
     }
 
+    public void setBreakpointAtLine(int lineNumber, Breakpoint bp) {
+        breakpoints.put(lineNumber, bp);
+    }
+
     /**
      * Removes a breakpoint at a line number
      */

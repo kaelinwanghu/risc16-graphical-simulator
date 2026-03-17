@@ -4,7 +4,7 @@ package engine.debug;
  * Represents a breakpoint with optional conditions
  */
 public class Breakpoint {
-    
+
     /**
      * Comparison operators for conditional breakpoints
      */
@@ -15,43 +15,43 @@ public class Breakpoint {
         LESS_EQUAL("<="),
         GREATER_THAN(">"),
         GREATER_EQUAL(">=");
-        
+
         private final String symbol;
-        
+
         Operator(String symbol) {
             this.symbol = symbol;
         }
-        
+
         public String getSymbol() {
             return symbol;
         }
-        
+
         @Override
         public String toString() {
             return symbol;
         }
     }
-    
+
     /**
      * Type of value to watch in condition
      */
     public enum WatchType {
-        REGISTER,       // Watch a register value
-        MEMORY,         // Watch a memory location
-        PC,             // Watch program counter
-        INSTRUCTION_COUNT  // Watch instruction count
+        REGISTER, // Watch a register value
+        MEMORY, // Watch a memory location
+        PC, // Watch program counter
+        INSTRUCTION_COUNT // Watch instruction count
     }
-    
-    private final int lineNumber;
+
+    private int lineNumber;
     private boolean enabled;
-    
+
     // Conditional breakpoint fields
     private boolean isConditional;
     private WatchType watchType;
-    private int watchTarget;     // Register number (0-7) or memory address
+    private int watchTarget; // Register number (0-7) or memory address
     private Operator operator;
     private int compareValue;
-    
+
     /**
      * Creates an unconditional breakpoint
      */
@@ -60,7 +60,7 @@ public class Breakpoint {
         this.enabled = true;
         this.isConditional = false;
     }
-    
+
     /**
      * Creates a conditional breakpoint
      */
@@ -73,41 +73,41 @@ public class Breakpoint {
         this.operator = operator;
         this.compareValue = compareValue;
     }
-    
+
     // Getters
-    
+
     public int getLineNumber() {
         return lineNumber;
     }
-    
+
     public boolean isEnabled() {
         return enabled;
     }
-    
+
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
     }
-    
+
     public boolean isConditional() {
         return isConditional;
     }
-    
+
     public WatchType getWatchType() {
         return watchType;
     }
-    
+
     public int getWatchTarget() {
         return watchTarget;
     }
-    
+
     public Operator getOperator() {
         return operator;
     }
-    
+
     public int getCompareValue() {
         return compareValue;
     }
-    
+
     /**
      * Gets a human-readable description of the breakpoint
      */
@@ -115,10 +115,10 @@ public class Breakpoint {
         if (!isConditional) {
             return "Break at line " + lineNumber;
         }
-        
+
         StringBuilder sb = new StringBuilder();
         sb.append("Break when ");
-        
+
         switch (watchType) {
             case REGISTER:
                 sb.append("R").append(watchTarget);
@@ -133,16 +133,20 @@ public class Breakpoint {
                 sb.append("Instructions");
                 break;
         }
-        
+
         sb.append(" ").append(operator.getSymbol()).append(" ");
         sb.append(compareValue);
-        
+
         return sb.toString();
     }
-    
+
+    public void setLineNumber(int lineNumber) {
+        this.lineNumber = lineNumber;
+    }
+
     @Override
     public String toString() {
-        return String.format("Breakpoint[line=%d, enabled=%s, %s]", 
-            lineNumber, enabled, getDescription());
+        return String.format("Breakpoint[line=%d, enabled=%s, %s]",
+                lineNumber, enabled, getDescription());
     }
 }
